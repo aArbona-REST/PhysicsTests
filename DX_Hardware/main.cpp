@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ctime>
+
 #include <vector>
 #include <windowsx.h>
 #include <d3d11.h>
@@ -45,18 +46,25 @@ class DEMO_APP
 	ID3D11VertexShader             *vertexshader = nullptr;
 	ID3D11PixelShader              *pixelshader = nullptr;
 
-	ID3D11Buffer                   *objvertbuffer = nullptr;
-	unsigned int                    objvertcount;
+	//ID3D11Buffer                   *objvertbuffer = nullptr;
+	//unsigned int                    objvertcount;
 
 	ID3D11Buffer                   *cartesiancoordinatesvertbuffer = nullptr;
-	ID3D11Buffer                   *trianglevertbuffer = nullptr;
+	unsigned int                    cartesiancoordinatesvertcount = 6;
 
+	ID3D11Buffer                   *trianglevertbuffer = nullptr;
+	unsigned int                    trianglevertcount = 3;
+
+	ID3D11Buffer                   *galaxyvertbuffer = nullptr;
+	unsigned int                    galaxyvertcount = 10000;
 
 	ID3D11Buffer                   *cameraconstbuffer = nullptr;
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
 
 	XMMATRIX cworld, clocal, cprojection;
 	XMMATRIX triangleworld, trianglelocal;
+	XMMATRIX galaxyworld, galaxylocal;
+
 
 public:
 
@@ -199,7 +207,7 @@ void DEMO_APP::LoadAssets()
 #pragma endregion
 
 #pragma region cartesiancoordinates vert data and vert buffer
-	VERTEX cartesiancoordinatesxyz[6]{};
+	VERTEX * cartesiancoordinatesxyz = new VERTEX[cartesiancoordinatesvertcount];
 	cartesiancoordinatesxyz[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	cartesiancoordinatesxyz[0].color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 	cartesiancoordinatesxyz[1].xyzw = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -215,7 +223,7 @@ void DEMO_APP::LoadAssets()
 	D3D11_BUFFER_DESC cartesiancoordinatesvertbufferdescription;
 	ZeroMemory(&cartesiancoordinatesvertbufferdescription, sizeof(D3D11_BUFFER_DESC));
 	cartesiancoordinatesvertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	cartesiancoordinatesvertbufferdescription.ByteWidth = sizeof(VERTEX) * 6;
+	cartesiancoordinatesvertbufferdescription.ByteWidth = sizeof(VERTEX) * cartesiancoordinatesvertcount;
 	cartesiancoordinatesvertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	cartesiancoordinatesvertbufferdescription.CPUAccessFlags = 0;
 	cartesiancoordinatesvertbufferdescription.MiscFlags = NULL;
@@ -237,7 +245,7 @@ void DEMO_APP::LoadAssets()
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f
 	};
-	VERTEX trianglexyz[3]{};
+	VERTEX  * trianglexyz = new VERTEX[trianglevertcount];
 	trianglexyz[0].xyzw = XMFLOAT4(0.5f, -0.5f, 0.0f, 1.0f);
 	trianglexyz[0].color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 	trianglexyz[1].xyzw = XMFLOAT4(0.0f, 0.5f, 0.0f, 1.0f);
@@ -247,7 +255,7 @@ void DEMO_APP::LoadAssets()
 	D3D11_BUFFER_DESC trianglevertbufferdescription;
 	ZeroMemory(&trianglevertbufferdescription, sizeof(D3D11_BUFFER_DESC));
 	trianglevertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	trianglevertbufferdescription.ByteWidth = sizeof(VERTEX) * 3;
+	trianglevertbufferdescription.ByteWidth = sizeof(VERTEX) * trianglevertcount;
 	trianglevertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	trianglevertbufferdescription.CPUAccessFlags = 0;
 	trianglevertbufferdescription.MiscFlags = NULL;
@@ -256,6 +264,44 @@ void DEMO_APP::LoadAssets()
 	ZeroMemory(&trianglecoordinatesinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
 	trianglecoordinatesinitdata.pSysMem = trianglexyz;
 	device->CreateBuffer(&trianglevertbufferdescription, &trianglecoordinatesinitdata, &trianglevertbuffer);
+#pragma endregion
+
+#pragma region galexy vert data and buffer
+
+	TRANSFORM galaxy;
+	ZeroMemory(&galaxy, sizeof(TRANSFORM));
+	galaxyworld = XMMatrixIdentity();
+	galaxylocal = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+	
+	VERTEX * galaxyxyz = new VERTEX[galaxyvertcount];
+
+	for (size_t i = 0; i < galaxyvertcount; i++)
+	{
+		galaxyxyz[i].xyzw = XMFLOAT4(
+			(float)(rand() % 101 - 50) + (float)((rand() % 100) * 0.01f), 
+			(float)(rand() % 101 - 50) + (float)((rand() % 100) * 0.01f), 
+			(float)(rand() % 101 - 50) + (float)((rand() % 100) * 0.01f),
+			1.0f);
+		galaxyxyz[i].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+
+	D3D11_BUFFER_DESC galaxyvertbufferdescription;
+	ZeroMemory(&galaxyvertbufferdescription, sizeof(D3D11_BUFFER_DESC));
+	galaxyvertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
+	galaxyvertbufferdescription.ByteWidth = sizeof(VERTEX) * galaxyvertcount;
+	galaxyvertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	galaxyvertbufferdescription.CPUAccessFlags = 0;
+	galaxyvertbufferdescription.MiscFlags = NULL;
+	galaxyvertbufferdescription.StructureByteStride = sizeof(VERTEX);
+	D3D11_SUBRESOURCE_DATA galaxyinitdata;
+	ZeroMemory(&galaxyinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
+	galaxyinitdata.pSysMem = galaxyxyz;
+	device->CreateBuffer(&galaxyvertbufferdescription, &galaxyinitdata, &galaxyvertbuffer);
 #pragma endregion
 
 #pragma region camera constbuffer
@@ -548,7 +594,7 @@ void DEMO_APP::Render()
 	context->IASetVertexBuffers(0, 1, &cartesiancoordinatesvertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-	context->Draw(6, 0);
+	context->Draw(cartesiancoordinatesvertcount, 0);
 #pragma endregion
 
 #pragma region triangle
@@ -563,7 +609,7 @@ void DEMO_APP::Render()
 	context->IASetVertexBuffers(0, 1, &trianglevertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->Draw(3, 0);
+	context->Draw(trianglevertcount, 0);
 
 
 	TRANSFORM trianglecartesiancoordinates;
@@ -577,12 +623,23 @@ void DEMO_APP::Render()
 	context->IASetVertexBuffers(0, 1, &cartesiancoordinatesvertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-	context->Draw(6, 0);
-
-
-
+	context->Draw(cartesiancoordinatesvertcount, 0);
 #pragma endregion
 
+#pragma region galaxy
+	TRANSFORM galaxy;
+	ZeroMemory(&galaxy, sizeof(TRANSFORM));
+	galaxy.tworld = XMMatrixTranspose(XMMatrixIdentity());
+	galaxy.tlocal = XMMatrixTranspose(XMMatrixIdentity());
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &galaxy, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+
+	context->IASetVertexBuffers(0, 1, &galaxyvertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+	context->Draw(galaxyvertcount, 0);
+#pragma endregion
 
 	swapchain->Present(0, 0);
 
@@ -605,6 +662,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR, int)
 {
+	srand(time(0));
+
 	DEMO_APP                        myApp(hInstance, (WNDPROC)WndProc);
 	MSG                             msg; ZeroMemory(&msg, sizeof(msg));
 
