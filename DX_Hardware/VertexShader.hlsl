@@ -29,7 +29,9 @@ OUTPUT_VERTEX main( INPUT_VERTEX fromVertexBuffer )
 {
 	OUTPUT_VERTEX sendToRasterizer = (OUTPUT_VERTEX)0;
 
-	sendToRasterizer.projectedcoordinate = mul(fromVertexBuffer.coordinate, tlocal);
+	matrix local = mul(tlocal, tworld);
+
+	sendToRasterizer.projectedcoordinate = mul(fromVertexBuffer.coordinate, local);
 	sendToRasterizer.projectedcoordinate = mul(sendToRasterizer.projectedcoordinate, clocal);
 	sendToRasterizer.projectedcoordinate = mul(sendToRasterizer.projectedcoordinate, cprojection);
 
