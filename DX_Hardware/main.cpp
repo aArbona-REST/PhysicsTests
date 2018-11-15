@@ -49,10 +49,7 @@ class DEMO_APP
 	unsigned int                    objvertcount;
 
 	ID3D11Buffer                   *cartesiancoordinatesvertbuffer = nullptr;
-	ID3D11Buffer                   *xycirclevertbuffer = nullptr;
-	ID3D11Buffer                   *xzcirclevertbuffer = nullptr;
-	ID3D11Buffer                   *yzcirclevertbuffer = nullptr;
-	ID3D11Buffer                   *cubevertbuffer = nullptr;
+
 	ID3D11Buffer                   *cameraconstbuffer = nullptr;
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
 
@@ -178,11 +175,11 @@ void DEMO_APP::LoadPipeline()
 void DEMO_APP::LoadAssets()
 {
 
-#pragma region sphere vert data and vert buffer
+#pragma region obj vert data and vert buffer
 
 	vector<VERTEX> objverts;
 	LoadOBJ("pyramid.obj", objverts);
-	objvertcount = objverts.size();
+	objvertcount = (unsigned int)objverts.size();
 
 	D3D11_BUFFER_DESC objvertbufferdescription;
 	ZeroMemory(&objvertbufferdescription, sizeof(D3D11_BUFFER_DESC));
@@ -227,141 +224,6 @@ void DEMO_APP::LoadAssets()
 	device->CreateBuffer(&cartesiancoordinatesvertbufferdescription, &cartesiancoordinatesinitdata, &cartesiancoordinatesvertbuffer);
 #pragma endregion
 
-#pragma region xycircle vert data and vert buffer
-	VERTEX xycircle[366]{};
-	for (size_t i = 0; i < 366; i++)
-	{
-		xycircle[i].xyzw = XMFLOAT4((sin((i * (3.14f / 180))))*1.0f, (cos((i * (3.14f / 180))))*1.0f, 0.0f, 1.0f);
-		xycircle[i].color = XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f);
-	}
-	D3D11_BUFFER_DESC xycirclevertbufferdescription;
-	ZeroMemory(&xycirclevertbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	xycirclevertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	xycirclevertbufferdescription.ByteWidth = sizeof(VERTEX) * 366;
-	xycirclevertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	xycirclevertbufferdescription.CPUAccessFlags = 0;
-	xycirclevertbufferdescription.MiscFlags = NULL;
-	xycirclevertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA xycircleinitdata;
-	ZeroMemory(&xycircleinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	xycircleinitdata.pSysMem = xycircle;
-	device->CreateBuffer(&xycirclevertbufferdescription, &xycircleinitdata, &xycirclevertbuffer);
-#pragma endregion
-
-#pragma region xzcircle vert data and vert buffer
-	VERTEX xzcircle[366]{};
-	for (size_t i = 0; i < 366; i++)
-	{
-		xzcircle[i].xyzw = XMFLOAT4((sin((i * (3.14f / 180))))*1.0f, 0.0f, (cos((i * (3.14f / 180))))*1.0f, 1.0f);
-		xzcircle[i].color = XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f);
-	}
-	D3D11_BUFFER_DESC xzcirclevertbufferdescription;
-	ZeroMemory(&xzcirclevertbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	xzcirclevertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	xzcirclevertbufferdescription.ByteWidth = sizeof(VERTEX) * 366;
-	xzcirclevertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	xzcirclevertbufferdescription.CPUAccessFlags = 0;
-	xzcirclevertbufferdescription.MiscFlags = NULL;
-	xzcirclevertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA xzcircleinitdata;
-	ZeroMemory(&xzcircleinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	xzcircleinitdata.pSysMem = xzcircle;
-	device->CreateBuffer(&xzcirclevertbufferdescription, &xzcircleinitdata, &xzcirclevertbuffer);
-#pragma endregion
-
-#pragma region yzcircle vert data and vert buffer
-	VERTEX yzcircle[366]{};
-	for (size_t i = 0; i < 366; i++)
-	{
-		yzcircle[i].xyzw = XMFLOAT4(0.0f, (sin((i * (3.14f / 180))))*1.0f, (cos((i * (3.14f / 180))))*1.0f, 1.0f);
-		yzcircle[i].color = XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f);
-	}
-	D3D11_BUFFER_DESC yzcirclevertbufferdescription;
-	ZeroMemory(&yzcirclevertbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	yzcirclevertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	yzcirclevertbufferdescription.ByteWidth = sizeof(VERTEX) * 366;
-	yzcirclevertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	yzcirclevertbufferdescription.CPUAccessFlags = 0;
-	yzcirclevertbufferdescription.MiscFlags = NULL;
-	yzcirclevertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA yzcircleinitdata;
-	ZeroMemory(&yzcircleinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	yzcircleinitdata.pSysMem = yzcircle;
-	device->CreateBuffer(&yzcirclevertbufferdescription, &yzcircleinitdata, &yzcirclevertbuffer);
-#pragma endregion
-
-#pragma region cube vert data and vert buffer
-
-	unsigned int index = 0;
-
-	VERTEX cube[36]{};
-
-	for (size_t i = 0; i < 36; i++)
-		cube[i].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, -0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, -0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, -0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(-0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(-0.25f, -0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, +0.25f, 1.0f);
-
-	cube[index++].xyzw = XMFLOAT4(+0.25f, +0.25f, -0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, +0.25f, 1.0f);
-	cube[index++].xyzw = XMFLOAT4(+0.25f, -0.25f, -0.25f, 1.0f);
-
-
-	D3D11_BUFFER_DESC cubevertbufferdescription;
-	ZeroMemory(&cubevertbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	cubevertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	cubevertbufferdescription.ByteWidth = sizeof(VERTEX) * 36;
-	cubevertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	cubevertbufferdescription.CPUAccessFlags = 0;
-	cubevertbufferdescription.MiscFlags = NULL;
-	cubevertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA cubeinitdata;
-	ZeroMemory(&cubeinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	cubeinitdata.pSysMem = &cube;
-	device->CreateBuffer(&cubevertbufferdescription, &cubeinitdata, &cubevertbuffer);
-#pragma endregion
-
 #pragma region camera constbuffer
 
 	CAMERA camera;
@@ -387,7 +249,7 @@ void DEMO_APP::LoadAssets()
 	cameraconstbufferdescription.MiscFlags = NULL;
 	cameraconstbufferdescription.StructureByteStride = sizeof(CAMERA);
 	D3D11_SUBRESOURCE_DATA camerainitdata;
-	ZeroMemory(&camerainitdata, sizeof(cubeinitdata));
+	ZeroMemory(&camerainitdata, sizeof(D3D11_SUBRESOURCE_DATA));
 	camerainitdata.pSysMem = &camera;
 	device->CreateBuffer(&cameraconstbufferdescription, &camerainitdata, &cameraconstbuffer);
 #pragma endregion
@@ -601,130 +463,6 @@ void DEMO_APP::Render()
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	context->Draw(6, 0);
-#pragma endregion
-
-#pragma region xycircle
-	TRANSFORM txycircle;
-	ZeroMemory(&txycircle, sizeof(TRANSFORM));
-	tworld = XMMatrixIdentity();
-	tlocal = XMMatrixIdentity();
-	txycircle.tworld = XMMatrixTranspose(tworld);
-	txycircle.tlocal = XMMatrixTranspose(tlocal);
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &txycircle, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-
-	context->IASetVertexBuffers(0, 1, &xycirclevertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-	context->Draw(366, 0);
-#pragma endregion
-
-#pragma region xzcircle
-	TRANSFORM txzcircle;
-	ZeroMemory(&txzcircle, sizeof(TRANSFORM));
-	tworld = XMMatrixIdentity();
-	tlocal = XMMatrixIdentity();
-	txzcircle.tworld = XMMatrixTranspose(tworld);
-	txzcircle.tlocal = XMMatrixTranspose(tlocal);
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &txzcircle, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-
-	context->IASetVertexBuffers(0, 1, &xzcirclevertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-	context->Draw(366, 0);
-#pragma endregion
-
-#pragma region yzcircle
-	TRANSFORM tyzcircle;
-	ZeroMemory(&tyzcircle, sizeof(TRANSFORM));
-	tworld = XMMatrixIdentity();
-	tlocal = XMMatrixIdentity();
-	tyzcircle.tworld = XMMatrixTranspose(tworld);
-	tyzcircle.tlocal = XMMatrixTranspose(tlocal);
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &tyzcircle, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-
-	context->IASetVertexBuffers(0, 1, &yzcirclevertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
-	context->Draw(366, 0);
-#pragma endregion
-
-#pragma region xzmoon
-	TRANSFORM txzmoon;
-	ZeroMemory(&txzmoon, sizeof(TRANSFORM));
-	XMMATRIX mtxzOrbit = XMMatrixRotationY((float)time.TotalTimeExact());
-	XMMATRIX mtxzTranslate = XMMatrixTranslation(1.0f, 0.0f, 0.0f);
-	XMMATRIX mtxzScale = XMMatrixScaling(0.2f, 0.2f, 0.2f);
-	tlocal = mtxzScale * mtxzTranslate * mtxzOrbit;
-	txzmoon.tworld = XMMatrixTranspose(tworld);
-	txzmoon.tlocal = XMMatrixTranspose(tlocal);
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &txzmoon, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-
-	context->IASetVertexBuffers(0, 1, &cubevertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->Draw(36, 0);
-#pragma endregion
-
-#pragma region xymoon
-	TRANSFORM txymoon;
-	ZeroMemory(&txymoon, sizeof(TRANSFORM));
-	XMMATRIX mtxyOrbit = XMMatrixRotationZ((float)time.TotalTimeExact());
-	XMMATRIX mtxyTranslate = XMMatrixTranslation(0.0f, 1.0f, 0.0f);
-	XMMATRIX mtxyScale = XMMatrixScaling(0.2f, 0.2f, 0.2f);
-	tlocal = mtxyScale * mtxyTranslate * mtxyOrbit;
-	txymoon.tworld = XMMatrixTranspose(tworld);
-	txymoon.tlocal = XMMatrixTranspose(tlocal);
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &txymoon, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-
-	context->IASetVertexBuffers(0, 1, &cubevertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->Draw(36, 0);
-#pragma endregion
-
-#pragma region yzmoon
-	TRANSFORM tyzmoon;
-	ZeroMemory(&tyzmoon, sizeof(TRANSFORM));
-	XMMATRIX mtyzOrbit = XMMatrixRotationX((float)time.TotalTimeExact());
-	XMMATRIX mtyzTranslate = XMMatrixTranslation(0.0f, 0.0f, 1.0f);
-	XMMATRIX mtyzScale = XMMatrixScaling(0.2f, 0.2f, 0.2f);
-	tlocal = mtyzScale * mtyzTranslate * mtyzOrbit;
-	tyzmoon.tworld = XMMatrixTranspose(tworld);
-	tyzmoon.tlocal = XMMatrixTranspose(tlocal);
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &tyzmoon, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-
-	context->IASetVertexBuffers(0, 1, &cubevertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->Draw(36, 0);
-#pragma endregion
-
-#pragma region earth
-	//TRANSFORM tearth;
-	//ZeroMemory(&tearth, sizeof(TRANSFORM));
-	//tlocal = XMMatrixRotationY((float)time.TotalTimeExact());
-	//tearth.tworld = XMMatrixTranspose(tworld);
-	//tearth.tlocal = XMMatrixTranspose(tlocal);
-	//context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	//memcpy_s(msr.pData, sizeof(TRANSFORM), &tearth, sizeof(TRANSFORM));
-	//context->Unmap(transformconstbuffer, 0);
-
-	//context->IASetVertexBuffers(0, 1, &cubevertbuffer, &stride, &offset);
-	//context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	//context->Draw(36, 0);
 #pragma endregion
 
 	swapchain->Present(0, 0);
