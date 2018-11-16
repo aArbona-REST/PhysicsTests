@@ -1,4 +1,10 @@
-float4 main( float4 colorFromRasterizer : COLOR ) : SV_TARGET
+struct PS_VERTEX
 {
-	return colorFromRasterizer;
+	float4 coordinate : SV_POSITION;
+	float4 color : COLOR;
+};
+
+float4 main(PS_VERTEX input) : SV_TARGET
+{
+	return input.color;
 }
