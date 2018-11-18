@@ -1,6 +1,6 @@
 struct VS_VERTEX
 {
-	float4 coordinate : POSITION;
+	float4 localcoordinate : POSITION;
 	float4 color : COLOR;
 	float2 uv : UV;
 	float4 normal : NORMAL;
@@ -8,7 +8,8 @@ struct VS_VERTEX
 
 struct PS_VERTEX
 {
-	float4 coordinate : SV_POSITION;
+	float4 worldcoordinate : SV_POSITION;
+	float4 localcoordinate : POSITION;
 	float4 color : COLOR;
 };
 
@@ -28,15 +29,11 @@ cbuffer TRANSFORM : register(b1)
 PS_VERTEX main(VS_VERTEX fromVertexBuffer )
 {
 	PS_VERTEX sendToRasterizer = (PS_VERTEX)0;
-
-	matrix local = mul(tlocal, tworld);
-
-	sendToRasterizer.coordinate = mul(fromVertexBuffer.coordinate, local);
-	sendToRasterizer.coordinate = mul(sendToRasterizer.coordinate, clocal);
-	sendToRasterizer.coordinate = mul(sendToRasterizer.coordinate, cprojection);
-
+	sendToRasterizer.worldcoordinate = mul(fromVertexBuffer.localcoordinate, mul(tlocal, tworld));
+	sendToRasterizer.worldcoordinate = mul(sendToRasterizer.worldcoordinate, clocal);
+	sendToRasterizer.worldcoordinate = mul(sendToRasterizer.worldcoordinate, cprojection);
+	sendToRasterizer.localcoordinate = fromVertexBuffer.localcoordinate;
 	sendToRasterizer.color = fromVertexBuffer.color;
-
 	return sendToRasterizer;
 
 

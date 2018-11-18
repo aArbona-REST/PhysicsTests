@@ -1,6 +1,7 @@
 struct PS_VERTEX
 {
-	float4 coordinate : SV_POSITION;
+	float4 worldcoordinate : SV_POSITION;
+	float4 localcoordinate : POSITION;
 	float4 color : COLOR;
 };
 
