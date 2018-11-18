@@ -8,8 +8,6 @@
 #include "Time.h"
 #include "UserInput.h"
 
-#include "GalaxyVertexShader.csh"
-#include "GalaxyPixelShader.csh"
 #include "VertexShader.csh"
 #include "PixelShader.csh"
 
@@ -51,11 +49,6 @@ class DEMO_APP
 
 	ID3D11VertexShader             *vertexshader = nullptr;
 	ID3D11PixelShader              *pixelshader = nullptr;
-	ID3D11VertexShader             *galaxyvertexshader = nullptr;
-	ID3D11PixelShader             *galaxypixelshader = nullptr;
-
-	//ID3D11Buffer                   *objvertbuffer = nullptr;
-	//unsigned int                    objvertcount;
 
 	ID3D11Buffer                   *cartesiancoordinatesvertbuffer = nullptr;
 	unsigned int                    cartesiancoordinatesvertcount = 6;
@@ -63,18 +56,11 @@ class DEMO_APP
 	ID3D11Buffer                   *trianglevertbuffer = nullptr;
 	unsigned int                    trianglevertcount = 3;
 
-	ID3D11Buffer                   *galaxyvertbuffer = nullptr;
-	unsigned int                    galaxyvertcount = 10000;
-
 	ID3D11Buffer                   *cameraconstbuffer = nullptr;
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
-	ID3D11Buffer                   *galaxyplaneconstbuffer = nullptr;
 
 	XMMATRIX cworld, clocal, cprojection;
 	XMMATRIX triangleworld, trianglelocal;
-	XMMATRIX galaxyworld, galaxylocal;
-	XMFLOAT4 planespace, planenormal;
-
 
 public:
 
@@ -170,10 +156,6 @@ void DEMO_APP::LoadPipeline()
 #pragma endregion
 
 #pragma region shaders
-
-	device->CreateVertexShader(GalaxyVertexShader, sizeof(GalaxyVertexShader), NULL, &galaxyvertexshader);
-	device->CreatePixelShader(GalaxyPixelShader, sizeof(GalaxyPixelShader), NULL, &galaxypixelshader);
-
 	device->CreateVertexShader(VertexShader, sizeof(VertexShader), NULL, &vertexshader);
 	context->VSSetShader(vertexshader, NULL, NULL);
 
@@ -199,27 +181,6 @@ void DEMO_APP::LoadPipeline()
 
 void DEMO_APP::LoadAssets()
 {
-
-#pragma region obj vert data and vert buffer
-
-	//vector<VERTEX> objverts;
-	//LoadOBJ("pyramid.obj", objverts);
-	//objvertcount = (unsigned int)objverts.size();
-
-	//D3D11_BUFFER_DESC objvertbufferdescription;
-	//ZeroMemory(&objvertbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	//objvertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	//objvertbufferdescription.ByteWidth = sizeof(VERTEX) * objvertcount;
-	//objvertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	//objvertbufferdescription.CPUAccessFlags = 0;
-	//objvertbufferdescription.MiscFlags = NULL;
-	//objvertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	//D3D11_SUBRESOURCE_DATA objvertinitdata;
-	//ZeroMemory(&objvertinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	//objvertinitdata.pSysMem = objverts.data();
-	//device->CreateBuffer(&objvertbufferdescription, &objvertinitdata, &objvertbuffer);
-
-#pragma endregion
 
 #pragma region cartesiancoordinates vert data and vert buffer
 	VERTEX * cartesiancoordinatesxyz = new VERTEX[cartesiancoordinatesvertcount];
@@ -279,45 +240,6 @@ void DEMO_APP::LoadAssets()
 	ZeroMemory(&trianglecoordinatesinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
 	trianglecoordinatesinitdata.pSysMem = trianglexyz;
 	device->CreateBuffer(&trianglevertbufferdescription, &trianglecoordinatesinitdata, &trianglevertbuffer);
-#pragma endregion
-
-#pragma region galexy vert data and buffer
-
-	TRANSFORM galaxy;
-	ZeroMemory(&galaxy, sizeof(TRANSFORM));
-	galaxyworld = XMMatrixIdentity();
-	galaxylocal = {
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
-	};
-	
-	VERTEX * galaxyxyz = new VERTEX[galaxyvertcount];
-
-	for (size_t i = 0; i < galaxyvertcount; i++)
-	{
-		float x = (float)(rand() % 51 - 25) + (float)((rand() % 100) * 0.01f);
-		float y = (float)(rand() % 51 - 25) + (float)((rand() % 100) * 0.01f);
-		float z = (float)(rand() % 51 - 25) + (float)((rand() % 100) * 0.01f);
-
-		galaxyxyz[i].xyzw = XMFLOAT4(x,y,z,1.0f);
-		//galaxyxyz[i].color = XMFLOAT4(x, y, z, 1.0f);
-		galaxyxyz[i].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	}
-
-	D3D11_BUFFER_DESC galaxyvertbufferdescription;
-	ZeroMemory(&galaxyvertbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	galaxyvertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	galaxyvertbufferdescription.ByteWidth = sizeof(VERTEX) * galaxyvertcount;
-	galaxyvertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	galaxyvertbufferdescription.CPUAccessFlags = 0;
-	galaxyvertbufferdescription.MiscFlags = NULL;
-	galaxyvertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA galaxyinitdata;
-	ZeroMemory(&galaxyinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	galaxyinitdata.pSysMem = galaxyxyz;
-	device->CreateBuffer(&galaxyvertbufferdescription, &galaxyinitdata, &galaxyvertbuffer);
 #pragma endregion
 
 #pragma region camera constbuffer
@@ -391,29 +313,6 @@ void DEMO_APP::LoadAssets()
 	transforminitdata.pSysMem = &transform;
 	device->CreateBuffer(&transformconstbufferdescription, &transforminitdata, &transformconstbuffer);
 #pragma endregion
-
-#pragma region galaxyplane constbuffer
-	GALAXYPLANE galaxyplane;
-	ZeroMemory(&galaxyplane, sizeof(GALAXYPLANE));
-	planespace = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-	planenormal = XMFLOAT4(0.0f, 0.0f, 1.0f, 0.0f);
-	galaxyplane.planespace = planespace;
-	galaxyplane.planenormal = planenormal;
-
-	D3D11_BUFFER_DESC galaxyplaneconstbufferdescription;
-	ZeroMemory(&galaxyplaneconstbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	galaxyplaneconstbufferdescription.Usage = D3D11_USAGE_DYNAMIC;
-	galaxyplaneconstbufferdescription.ByteWidth = sizeof(TRANSFORM);
-	galaxyplaneconstbufferdescription.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	galaxyplaneconstbufferdescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	galaxyplaneconstbufferdescription.MiscFlags = NULL;
-	galaxyplaneconstbufferdescription.StructureByteStride = sizeof(TRANSFORM);
-	D3D11_SUBRESOURCE_DATA galaxyplaneinitdata;
-	ZeroMemory(&galaxyplaneinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	galaxyplaneinitdata.pSysMem = &galaxyplane;
-	device->CreateBuffer(&galaxyplaneconstbufferdescription, &galaxyplaneinitdata, &galaxyplaneconstbuffer);
-#pragma endregion
-
 
 }
 
@@ -542,7 +441,6 @@ void DEMO_APP::Input()
 
 	clocal = newcamera;
 
-
 	XMMATRIX newtriangle = trianglelocal;
 
 #pragma region translation triangle movement
@@ -569,15 +467,7 @@ void DEMO_APP::Input()
 #pragma endregion
 
 	userinput.mouse_move = false;
-	XMStoreFloat4(&planespace, newtriangle.r[3]);
-	XMStoreFloat4(&planenormal, newtriangle.r[2]);
 	trianglelocal = newtriangle;
-
-
-
-
-
-
 
 }
 
@@ -593,9 +483,6 @@ void DEMO_APP::Render()
 	D3D11_MAPPED_SUBRESOURCE msr;
 	ZeroMemory(&msr, sizeof(D3D11_MAPPED_SUBRESOURCE));
 
-	context->VSSetShader(vertexshader, NULL, NULL);
-	context->PSSetShader(pixelshader, NULL, NULL);
-
 #pragma region camera
 	CAMERA camera;
 	ZeroMemory(&camera, sizeof(CAMERA));
@@ -606,22 +493,6 @@ void DEMO_APP::Render()
 	memcpy_s(msr.pData, sizeof(CAMERA), &camera, sizeof(CAMERA));
 	context->Unmap(cameraconstbuffer, 0);
 	context->VSSetConstantBuffers(0, 1, &cameraconstbuffer);
-#pragma endregion
-
-#pragma region obj file 
-	//TRANSFORM tobjfile;
-	//ZeroMemory(&tobjfile, sizeof(TRANSFORM));
-	//tworld = XMMatrixIdentity();
-	//tlocal = XMMatrixIdentity();
-	//tobjfile.tworld = XMMatrixTranspose(tworld);
-	//tobjfile.tlocal = XMMatrixTranspose(tlocal);
-	//context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	//memcpy_s(msr.pData, sizeof(TRANSFORM), &tobjfile, sizeof(TRANSFORM));
-	//context->Unmap(transformconstbuffer, 0);
-	//context->IASetVertexBuffers(0, 1, &objvertbuffer, &stride, &offset);
-	//context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	//context->Draw(objvertcount, 0);
 #pragma endregion
 
 #pragma region cartesiancoordinates
@@ -636,16 +507,6 @@ void DEMO_APP::Render()
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	context->Draw(cartesiancoordinatesvertcount, 0);
-#pragma endregion
-
-#pragma region galaxyplane
-	GALAXYPLANE galaxyplane;
-	ZeroMemory(&galaxyplane, sizeof(GALAXYPLANE));
-	galaxyplane.planespace = planespace;
-	galaxyplane.planenormal = planenormal;
-	context->Map(galaxyplaneconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(GALAXYPLANE), &galaxyplane, sizeof(GALAXYPLANE));
-	context->Unmap(galaxyplaneconstbuffer, 0);
 #pragma endregion
 
 #pragma region triangle
@@ -677,27 +538,6 @@ void DEMO_APP::Render()
 	context->Draw(cartesiancoordinatesvertcount, 0);
 #pragma endregion
 
-	context->VSSetShader(galaxyvertexshader, NULL, NULL);
-	context->PSSetShader(galaxypixelshader, NULL, NULL);
-
-#pragma region galaxy
-
-	TRANSFORM galaxy;
-	ZeroMemory(&galaxy, sizeof(TRANSFORM));
-	galaxy.tworld = XMMatrixTranspose(XMMatrixIdentity());
-	galaxy.tlocal = XMMatrixTranspose(XMMatrixIdentity());
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &galaxy, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-	context->IASetVertexBuffers(0, 1, &galaxyvertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(0, 1, &cameraconstbuffer);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->VSSetConstantBuffers(2, 1, &galaxyplaneconstbuffer);
-	context->PSSetConstantBuffers(0, 1, &galaxyplaneconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-	context->Draw(galaxyvertcount, 0);
-#pragma endregion
-
 	swapchain->Present(0, 0);
 
 }
@@ -705,11 +545,22 @@ void DEMO_APP::Render()
 void DEMO_APP::ShutDown()
 {
 
-	//this is missing ID311Buffer->Release();
 	device->Release();
+	swapchain->Release();
 	context->Release();
 	rtv->Release();
-	swapchain->Release();
+	layout->Release();
+	depthstencil->Release();
+	depthstencilview->Release();
+
+	vertexshader->Release();
+	pixelshader->Release();
+
+	cartesiancoordinatesvertbuffer->Release();
+	trianglevertbuffer->Release();
+
+	cameraconstbuffer->Release();
+	transformconstbuffer->Release();
 	UnregisterClass(L"DirectXApplication", application);
 }
 
