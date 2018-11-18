@@ -56,11 +56,15 @@ class DEMO_APP
 	ID3D11Buffer                   *trianglevertbuffer = nullptr;
 	unsigned int                    trianglevertcount = 3;
 
+	ID3D11Buffer                   *linevertbuffer = nullptr;
+	unsigned int                    linevertcount = 2;
+	
 	ID3D11Buffer                   *cameraconstbuffer = nullptr;
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
 
 	XMMATRIX cworld, clocal, cprojection;
 	XMMATRIX triangleworld, trianglelocal;
+	XMMATRIX lineworld, linelocal;
 
 public:
 
@@ -211,9 +215,6 @@ void DEMO_APP::LoadAssets()
 #pragma endregion
 
 #pragma region triangle vert data and buffer
-
-	TRANSFORM triangle;
-	ZeroMemory(&triangle, sizeof(TRANSFORM));
 	triangleworld = XMMatrixIdentity();
 	trianglelocal = {
 		1.0f, 0.0f, 0.0f, 0.0f,
@@ -236,10 +237,37 @@ void DEMO_APP::LoadAssets()
 	trianglevertbufferdescription.CPUAccessFlags = 0;
 	trianglevertbufferdescription.MiscFlags = NULL;
 	trianglevertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA trianglecoordinatesinitdata;
-	ZeroMemory(&trianglecoordinatesinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	trianglecoordinatesinitdata.pSysMem = trianglexyz;
-	device->CreateBuffer(&trianglevertbufferdescription, &trianglecoordinatesinitdata, &trianglevertbuffer);
+	D3D11_SUBRESOURCE_DATA triangleinitdata;
+	ZeroMemory(&triangleinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
+	triangleinitdata.pSysMem = trianglexyz;
+	device->CreateBuffer(&trianglevertbufferdescription, &triangleinitdata, &trianglevertbuffer);
+#pragma endregion
+
+#pragma region line vert data and vert buffer
+	lineworld = XMMatrixIdentity();
+	linelocal = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+	VERTEX * line = new VERTEX[linevertcount];
+	line[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	line[0].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	line[1].xyzw = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	line[1].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	D3D11_BUFFER_DESC linebufferdescription;
+	ZeroMemory(&linebufferdescription, sizeof(D3D11_BUFFER_DESC));
+	linebufferdescription.Usage = D3D11_USAGE_DEFAULT;
+	linebufferdescription.ByteWidth = sizeof(VERTEX) * linevertcount;
+	linebufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	linebufferdescription.CPUAccessFlags = 0;
+	linebufferdescription.MiscFlags = NULL;
+	linebufferdescription.StructureByteStride = sizeof(VERTEX);
+	D3D11_SUBRESOURCE_DATA lineinitdata;
+	ZeroMemory(&lineinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
+	lineinitdata.pSysMem = line;
+	device->CreateBuffer(&linebufferdescription, &lineinitdata, &linevertbuffer);
 #pragma endregion
 
 #pragma region camera constbuffer
@@ -524,7 +552,6 @@ void DEMO_APP::Render()
 #pragma endregion
 
 #pragma region triangle cartesian coordinates
-
 	TRANSFORM trianglecartesiancoordinates;
 	ZeroMemory(&trianglecartesiancoordinates, sizeof(TRANSFORM));
 	trianglecartesiancoordinates.tworld = XMMatrixTranspose(trianglelocal);
@@ -536,6 +563,21 @@ void DEMO_APP::Render()
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	context->Draw(cartesiancoordinatesvertcount, 0);
+#pragma endregion
+
+#pragma region line
+	TRANSFORM line;
+	ZeroMemory(&line, sizeof(TRANSFORM));
+	line.tworld = XMMatrixTranspose(lineworld);
+	line.tlocal = XMMatrixTranspose(linelocal);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &line, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &linevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	context->Draw(linevertcount, 0);
+
 #pragma endregion
 
 	swapchain->Present(0, 0);
@@ -558,6 +600,7 @@ void DEMO_APP::ShutDown()
 
 	cartesiancoordinatesvertbuffer->Release();
 	trianglevertbuffer->Release();
+	linevertbuffer->Release();
 
 	cameraconstbuffer->Release();
 	transformconstbuffer->Release();
