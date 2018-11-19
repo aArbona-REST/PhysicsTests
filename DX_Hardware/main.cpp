@@ -53,18 +53,20 @@ class DEMO_APP
 	ID3D11Buffer                   *cartesiancoordinatesvertbuffer = nullptr;
 	unsigned int                    cartesiancoordinatesvertcount = 6;
 
-	ID3D11Buffer                   *trianglevertbuffer = nullptr;
-	unsigned int                    trianglevertcount = 3;
-
 	ID3D11Buffer                   *linevertbuffer = nullptr;
 	unsigned int                    linevertcount = 2;
-	
+	VERTEX                         *line = nullptr;
+
+	ID3D11Buffer                   *spherevertbuffer = nullptr;
+	unsigned int                    spherevertcount = 0;
+
 	ID3D11Buffer                   *cameraconstbuffer = nullptr;
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
 
 	XMMATRIX cworld, clocal, cprojection;
-	XMMATRIX triangleworld, trianglelocal;
 	XMMATRIX lineworld, linelocal;
+	XMMATRIX pointworld, pointlocal;
+	XMMATRIX testpointworld, testpointlocal;
 
 public:
 
@@ -186,7 +188,7 @@ void DEMO_APP::LoadPipeline()
 void DEMO_APP::LoadAssets()
 {
 
-#pragma region cartesiancoordinates vert data and vert buffer
+#pragma region cartesiancoordinates
 	VERTEX * cartesiancoordinatesxyz = new VERTEX[cartesiancoordinatesvertcount];
 	cartesiancoordinatesxyz[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	cartesiancoordinatesxyz[0].color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -214,47 +216,18 @@ void DEMO_APP::LoadAssets()
 	device->CreateBuffer(&cartesiancoordinatesvertbufferdescription, &cartesiancoordinatesinitdata, &cartesiancoordinatesvertbuffer);
 #pragma endregion
 
-#pragma region triangle vert data and buffer
-	triangleworld = XMMatrixIdentity();
-	trianglelocal = {
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
-	};
-	VERTEX  * trianglexyz = new VERTEX[trianglevertcount];
-	trianglexyz[0].xyzw = XMFLOAT4(0.5f, -0.5f, 0.0f, 1.0f);
-	trianglexyz[0].color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	trianglexyz[1].xyzw = XMFLOAT4(0.0f, 0.5f, 0.0f, 1.0f);
-	trianglexyz[1].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	trianglexyz[2].xyzw = XMFLOAT4(-0.5f, -0.5f, 0.0f, 1.0f);
-	trianglexyz[2].color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-	D3D11_BUFFER_DESC trianglevertbufferdescription;
-	ZeroMemory(&trianglevertbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	trianglevertbufferdescription.Usage = D3D11_USAGE_DEFAULT;
-	trianglevertbufferdescription.ByteWidth = sizeof(VERTEX) * trianglevertcount;
-	trianglevertbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	trianglevertbufferdescription.CPUAccessFlags = 0;
-	trianglevertbufferdescription.MiscFlags = NULL;
-	trianglevertbufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA triangleinitdata;
-	ZeroMemory(&triangleinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	triangleinitdata.pSysMem = trianglexyz;
-	device->CreateBuffer(&trianglevertbufferdescription, &triangleinitdata, &trianglevertbuffer);
-#pragma endregion
-
-#pragma region line vert data and vert buffer
+#pragma region line
 	lineworld = XMMatrixIdentity();
 	linelocal = {
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
+		0.0f, 1.0f, 0.0f, 1.0f
 	};
-	VERTEX * line = new VERTEX[linevertcount];
-	line[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	line = new VERTEX[linevertcount];
+	line[0].xyzw = XMFLOAT4(1.0f, 0.0f, -1.0f, 1.0f);
 	line[0].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	line[1].xyzw = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	line[1].xyzw = XMFLOAT4(-1.0f, 0.0f, 1.0f, 1.0f);
 	line[1].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	D3D11_BUFFER_DESC linebufferdescription;
 	ZeroMemory(&linebufferdescription, sizeof(D3D11_BUFFER_DESC));
@@ -270,7 +243,45 @@ void DEMO_APP::LoadAssets()
 	device->CreateBuffer(&linebufferdescription, &lineinitdata, &linevertbuffer);
 #pragma endregion
 
-#pragma region camera constbuffer
+#pragma region sphere
+	pointworld = XMMatrixIdentity();
+	pointlocal = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+
+
+	vector<VERTEX> mesh;
+	LoadOBJ("sphere.obj", mesh);
+	spherevertcount = (unsigned int)mesh.size();
+
+	D3D11_BUFFER_DESC pointbufferdescription;
+	ZeroMemory(&pointbufferdescription, sizeof(D3D11_BUFFER_DESC));
+	pointbufferdescription.Usage = D3D11_USAGE_DEFAULT;
+	pointbufferdescription.ByteWidth = sizeof(VERTEX) * spherevertcount;
+	pointbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	pointbufferdescription.CPUAccessFlags = 0;
+	pointbufferdescription.MiscFlags = NULL;
+	pointbufferdescription.StructureByteStride = sizeof(VERTEX);
+	D3D11_SUBRESOURCE_DATA pointinitdata;
+	ZeroMemory(&pointinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
+	pointinitdata.pSysMem = mesh.data();
+	device->CreateBuffer(&pointbufferdescription, &pointinitdata, &spherevertbuffer);
+#pragma endregion
+
+#pragma region testpoint
+	testpointworld = XMMatrixIdentity();
+	testpointlocal = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+#pragma endregion
+
+#pragma region camera
 
 	//X Rotation
 	//		1, 0, 0,
@@ -298,7 +309,7 @@ void DEMO_APP::LoadAssets()
 	XMMATRIX yrotation = {
 		cosf(XM_PI),   0.0f, sinf(XM_PI), 0.0f,
 		0.0f,          1.0f, 0.0f,        0.0f,
-		- sinf(XM_PI), 0.0f, cosf(XM_PI), 0.0f,
+		-sinf(XM_PI), 0.0f, cosf(XM_PI), 0.0f,
 		0.0f,          0.0f, 0.0f,        1.0f
 	};
 
@@ -322,7 +333,7 @@ void DEMO_APP::LoadAssets()
 	device->CreateBuffer(&cameraconstbufferdescription, &camerainitdata, &cameraconstbuffer);
 #pragma endregion
 
-#pragma region transform constbuffer
+#pragma region transform
 	TRANSFORM transform;
 	ZeroMemory(&transform, sizeof(TRANSFORM));
 	transform.tworld = XMMatrixTranspose(XMMatrixIdentity());
@@ -411,7 +422,7 @@ void DEMO_APP::LoadOBJ(char * fileName, vector<VERTEX> & FileMesh)
 		VERTEX vertex;
 		unsigned int vertexindex = vertexindices[i];
 		vertex.xyzw = vertices[vertexindex - 1];
-		vertex.color = XMFLOAT4(0.1f, 0.1f, 0.1f, 0.1f);
+		vertex.color = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.1f);
 		unsigned int uvindex = uvindices[i];
 		vertex.uv = uvs[uvindex - 1];
 		unsigned int normalindex = normalindices[i];
@@ -457,7 +468,7 @@ void DEMO_APP::Input()
 		newcamera = XMMatrixRotationZ(+(float)time.Delta() * 1.0f) * newcamera;
 		newcamera.r[3] = pos;
 	}
-	if (userinput.mouse_move && userinput.left_click)
+	if (userinput.left_click && userinput.mouse_move)
 	{
 		XMVECTOR pos = newcamera.r[3];
 		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -469,33 +480,52 @@ void DEMO_APP::Input()
 
 	clocal = newcamera;
 
-	XMMATRIX newtriangle = trianglelocal;
+	XMMATRIX newtestpoint = testpointlocal;
 
-#pragma region translation triangle movement
+#pragma region translation testpoint movement
 	if (userinput.buttons['I'])
-		newtriangle.r[3] = newtriangle.r[3] + newtriangle.r[2] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((+(float)time.Delta()) * 10.0f);
 	if (userinput.buttons['K'])
-		newtriangle.r[3] = newtriangle.r[3] + newtriangle.r[2] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((-(float)time.Delta()) * 10.0f);
+	if (userinput.buttons['Y'])
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((+(float)time.Delta()) * 10.0f);
+	if (userinput.buttons['H'])
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((-(float)time.Delta()) * 10.0f);
 	if (userinput.buttons['J'])
-		newtriangle.r[3] = newtriangle.r[3] + newtriangle.r[0] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((-(float)time.Delta()) * 10.0f);
 	if (userinput.buttons['L'])
-		newtriangle.r[3] = newtriangle.r[3] + newtriangle.r[0] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((+(float)time.Delta()) * 10.0f);
 #pragma endregion
 
-#pragma region rotation triangle movement
-
-	if (userinput.mouse_move && userinput.right_click)
+#pragma region rotation testpoint movement
+	if (userinput.buttons['U'])
 	{
-		XMVECTOR pos = newtriangle.r[3];
+		XMVECTOR pos = newtestpoint.r[3];
 		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		newtriangle.r[3] = XMLoadFloat4(&zero);
-		newtriangle = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 10.0f) * newtriangle * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 10.0f);
-		newtriangle.r[3] = pos;
+		newtestpoint.r[3] = XMLoadFloat4(&zero);
+		newtestpoint = XMMatrixRotationZ(-(float)time.Delta() * 1.0f) * newtestpoint;
+		newtestpoint.r[3] = pos;
+	}
+	if (userinput.buttons['O'])
+	{
+		XMVECTOR pos = newtestpoint.r[3];
+		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+		newtestpoint.r[3] = XMLoadFloat4(&zero);
+		newtestpoint = XMMatrixRotationZ(+(float)time.Delta() * 1.0f) * newtestpoint;
+		newtestpoint.r[3] = pos;
+	}
+	if (userinput.right_click && userinput.mouse_move)
+	{
+		XMVECTOR pos = newtestpoint.r[3];
+		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+		newtestpoint.r[3] = XMLoadFloat4(&zero);
+		newtestpoint = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 10.0f) * newtestpoint * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 10.0f);
+		newtestpoint.r[3] = pos;
 	}
 #pragma endregion
 
 	userinput.mouse_move = false;
-	trianglelocal = newtriangle;
+	testpointlocal = newtestpoint;
 
 }
 
@@ -537,47 +567,73 @@ void DEMO_APP::Render()
 	context->Draw(cartesiancoordinatesvertcount, 0);
 #pragma endregion
 
-#pragma region triangle
-	TRANSFORM triangle;
-	ZeroMemory(&triangle, sizeof(TRANSFORM));
-	triangle.tworld = XMMatrixTranspose(triangleworld);
-	triangle.tlocal = XMMatrixTranspose(trianglelocal);
+#pragma region testpoint
+	TRANSFORM ttestpoint;
+	ZeroMemory(&ttestpoint, sizeof(TRANSFORM));
+	ttestpoint.tworld = XMMatrixTranspose(testpointworld);
+	ttestpoint.tlocal = XMMatrixTranspose(testpointlocal);
+
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &triangle, sizeof(TRANSFORM));
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &ttestpoint, sizeof(TRANSFORM));
 	context->Unmap(transformconstbuffer, 0);
-	context->IASetVertexBuffers(0, 1, &trianglevertbuffer, &stride, &offset);
+
+
+	context->IASetVertexBuffers(0, 1, &spherevertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->Draw(trianglevertcount, 0);
-#pragma endregion
+	context->Draw(spherevertcount, 0);
 
-#pragma region triangle cartesian coordinates
-	TRANSFORM trianglecartesiancoordinates;
-	ZeroMemory(&trianglecartesiancoordinates, sizeof(TRANSFORM));
-	trianglecartesiancoordinates.tworld = XMMatrixTranspose(trianglelocal);
-	trianglecartesiancoordinates.tlocal = XMMatrixTranspose(XMMatrixIdentity());
+
+	TRANSFORM tspherecartesiancoordinates;
+	ZeroMemory(&tspherecartesiancoordinates, sizeof(TRANSFORM));
+	tspherecartesiancoordinates.tworld = XMMatrixTranspose(testpointlocal);
+	tspherecartesiancoordinates.tlocal = XMMatrixTranspose(XMMatrixIdentity());
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &trianglecartesiancoordinates, sizeof(TRANSFORM));
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &tspherecartesiancoordinates, sizeof(TRANSFORM));
 	context->Unmap(transformconstbuffer, 0);
 	context->IASetVertexBuffers(0, 1, &cartesiancoordinatesvertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	context->Draw(cartesiancoordinatesvertcount, 0);
+
+
 #pragma endregion
 
-#pragma region line
-	TRANSFORM line;
-	ZeroMemory(&line, sizeof(TRANSFORM));
-	line.tworld = XMMatrixTranspose(lineworld);
-	line.tlocal = XMMatrixTranspose(linelocal);
+#pragma region line and point on line
+	TRANSFORM tline;
+	ZeroMemory(&tline, sizeof(TRANSFORM));
+	tline.tworld = XMMatrixTranspose(lineworld);
+	tline.tlocal = XMMatrixTranspose(linelocal);
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &line, sizeof(TRANSFORM));
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &tline, sizeof(TRANSFORM));
 	context->Unmap(transformconstbuffer, 0);
 	context->IASetVertexBuffers(0, 1, &linevertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	context->Draw(linevertcount, 0);
 
+	XMMATRIX testpointmatrix = testpointlocal * testpointworld;
+	XMVECTOR A = XMVectorSet(line[0].xyzw.x, line[0].xyzw.y, line[0].xyzw.z, 1.0f);
+	XMVECTOR B = XMVectorSet(line[1].xyzw.x, line[1].xyzw.y, line[1].xyzw.z, 1.0f);
+	XMVECTOR C = B - A;
+	XMVECTOR D = XMVector4Dot(C, (testpointmatrix.r[3] - A)) / XMVector4Dot(C, C);
+	XMVECTOR closest = A + (C * D);
+	pointlocal.r[3] = closest;
+
+	TRANSFORM tpoint;
+	ZeroMemory(&tpoint, sizeof(TRANSFORM));
+	tpoint.tworld = XMMatrixTranspose(linelocal);
+	tpoint.tlocal = XMMatrixTranspose(pointlocal);
+
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &tpoint, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+
+
+	context->IASetVertexBuffers(0, 1, &spherevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(spherevertcount, 0);
 #pragma endregion
 
 	swapchain->Present(0, 0);
@@ -599,11 +655,13 @@ void DEMO_APP::ShutDown()
 	pixelshader->Release();
 
 	cartesiancoordinatesvertbuffer->Release();
-	trianglevertbuffer->Release();
 	linevertbuffer->Release();
+	spherevertbuffer->Release();
 
 	cameraconstbuffer->Release();
 	transformconstbuffer->Release();
+
+	delete line;
 	UnregisterClass(L"DirectXApplication", application);
 }
 
