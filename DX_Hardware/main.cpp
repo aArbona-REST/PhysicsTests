@@ -484,17 +484,17 @@ void DEMO_APP::Input()
 
 #pragma region translation testpoint movement
 	if (userinput.buttons['I'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((+(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['K'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((-(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['Y'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((+(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['H'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((-(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['J'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((-(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['L'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((+(float)time.Delta()) * 1.0f);
 #pragma endregion
 
 #pragma region rotation testpoint movement
@@ -519,7 +519,7 @@ void DEMO_APP::Input()
 		XMVECTOR pos = newtestpoint.r[3];
 		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 		newtestpoint.r[3] = XMLoadFloat4(&zero);
-		newtestpoint = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 10.0f) * newtestpoint * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 10.0f);
+		newtestpoint = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 1.0f) * newtestpoint * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 1.0f);
 		newtestpoint.r[3] = pos;
 	}
 #pragma endregion
@@ -600,6 +600,7 @@ void DEMO_APP::Render()
 #pragma endregion
 
 #pragma region line and point on line
+
 	TRANSFORM tline;
 	ZeroMemory(&tline, sizeof(TRANSFORM));
 	tline.tworld = XMMatrixTranspose(lineworld);
@@ -617,9 +618,12 @@ void DEMO_APP::Render()
 	XMVECTOR B = XMVectorSet(line[1].xyzw.x, line[1].xyzw.y, line[1].xyzw.z, 1.0f);
 	XMVECTOR C = B - A;
 	XMVECTOR D = XMVector4Dot(C, (testpointmatrix.r[3] - A)) / XMVector4Dot(C, C);
-	XMVECTOR closest = A + (C * D);
-	pointlocal.r[3] = closest;
-
+	if (XMVector4Less(D, XMVectorZero()))
+		pointlocal.r[3] = A;
+	else if (XMVector4Greater(D, XMVector4Normalize(B - A) + A))
+		pointlocal.r[3] = B;
+	else
+		pointlocal.r[3] = A + (C * D);
 	TRANSFORM tpoint;
 	ZeroMemory(&tpoint, sizeof(TRANSFORM));
 	tpoint.tworld = XMMatrixTranspose(linelocal);
