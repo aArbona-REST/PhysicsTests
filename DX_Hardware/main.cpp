@@ -50,6 +50,9 @@ class DEMO_APP
 	ID3D11VertexShader             *vertexshader = nullptr;
 	ID3D11PixelShader              *pixelshader = nullptr;
 
+	ID3D11Buffer                   *groundvertbuffer = nullptr;
+	unsigned int                    groundvertcount = 6;
+
 	ID3D11Buffer                   *cartesiancoordinatesvertbuffer = nullptr;
 	unsigned int                    cartesiancoordinatesvertcount = 6;
 
@@ -63,6 +66,7 @@ class DEMO_APP
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
 
 	XMMATRIX                        cworld, clocal, cprojection;
+	XMMATRIX                        groundworld, groundlocal;
 	XMMATRIX                        sphereworld, spherelocal;
 	XMMATRIX                        sphere1world, sphere1local;
 
@@ -188,6 +192,49 @@ void DEMO_APP::LoadPipeline()
 
 void DEMO_APP::LoadAssets()
 {
+
+#pragma region ground
+
+	groundworld = XMMatrixIdentity();
+	groundlocal = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+
+	VERTEX * ground = new VERTEX[groundvertcount];
+	ground[0].xyzw = XMFLOAT4(10.0f, 0.0f, 10.0f, 1.0f);
+	ground[1].xyzw = XMFLOAT4(10.0f, 0.0f, -10.0f, 1.0f);
+	ground[2].xyzw = XMFLOAT4(-10.0f, 0.0f, 10.0f, 1.0f);
+	
+	ground[3].xyzw = XMFLOAT4(-10.0f, 0.0f, -10.0f, 1.0f);
+	ground[4].xyzw = XMFLOAT4(-10.0f, 0.0f, 10.0f, 1.0f);
+	ground[5].xyzw = XMFLOAT4(10.0f, 0.0f, -10.0f, 1.0f);
+
+	ground[0].color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	ground[1].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	ground[2].color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+
+	ground[3].color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	ground[4].color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	ground[5].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+
+	D3D11_BUFFER_DESC groundbufferdescription;
+	ZeroMemory(&groundbufferdescription, sizeof(D3D11_BUFFER_DESC));
+	groundbufferdescription.Usage = D3D11_USAGE_DEFAULT;
+	groundbufferdescription.ByteWidth = sizeof(VERTEX) * groundvertcount;
+	groundbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	groundbufferdescription.CPUAccessFlags = 0;
+	groundbufferdescription.MiscFlags = NULL;
+	groundbufferdescription.StructureByteStride = sizeof(VERTEX);
+
+	D3D11_SUBRESOURCE_DATA groundinitdata;
+	ZeroMemory(&groundinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
+	groundinitdata.pSysMem = ground;
+	device->CreateBuffer(&groundbufferdescription, &groundinitdata, &groundvertbuffer);
+
+#pragma endregion
 
 #pragma region cartesiancoordinates
 	VERTEX * cartesiancoordinatesxyz = new VERTEX[cartesiancoordinatesvertcount];
@@ -606,6 +653,24 @@ void DEMO_APP::Render()
 	context->VSSetConstantBuffers(0, 1, &cameraconstbuffer);
 #pragma endregion
 
+#pragma region ground
+
+
+
+	TRANSFORM tground;
+	ZeroMemory(&tground, sizeof(TRANSFORM));
+	tground.tworld = XMMatrixTranspose(groundworld);
+	tground.tlocal = XMMatrixTranspose(groundlocal);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &tground, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &groundvertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(groundvertcount, 0);
+
+#pragma endregion
+
 #pragma region cartesiancoordinates
 	TRANSFORM tcartesiancoordinates;
 	ZeroMemory(&tcartesiancoordinates, sizeof(TRANSFORM));
@@ -702,6 +767,7 @@ void DEMO_APP::ShutDown()
 	vertexshader->Release();
 	pixelshader->Release();
 
+	groundvertbuffer->Release();
 	cartesiancoordinatesvertbuffer->Release();
 	whitespherevertbuffer->Release();
 	redspherevertbuffer->Release();
