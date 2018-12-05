@@ -53,19 +53,18 @@ class DEMO_APP
 	ID3D11Buffer                   *cartesiancoordinatesvertbuffer = nullptr;
 	unsigned int                    cartesiancoordinatesvertcount = 6;
 
-	ID3D11Buffer                   *linevertbuffer = nullptr;
-	unsigned int                    linevertcount = 2;
-	VERTEX                         *line = nullptr;
-
-	ID3D11Buffer                   *spherevertbuffer = nullptr;
+	ID3D11Buffer                   *whitespherevertbuffer = nullptr;
+	ID3D11Buffer                   *redspherevertbuffer = nullptr;
 	unsigned int                    spherevertcount = 0;
+	vector<VERTEX>                  whitemesh;
+	vector<VERTEX>                  redmesh;
 
 	ID3D11Buffer                   *cameraconstbuffer = nullptr;
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
 
 	XMMATRIX                        cworld, clocal, cprojection;
-	XMMATRIX                        lineworld, linelocal;
 	XMMATRIX                        sphereworld, spherelocal;
+	XMMATRIX                        sphere1world, sphere1local;
 
 	bool                            collision = false;
 
@@ -77,7 +76,8 @@ public:
 	void LoadWindow(HINSTANCE &hinst, WNDPROC &proc);
 	void LoadPipeline();
 	void LoadAssets();
-	void LoadOBJ(char * fileName, vector<VERTEX> & FileMesh);
+	void LoadOBJwhite(char * fileName, vector<VERTEX> & FileMesh);
+	void LoadOBJred(char * fileName, vector<VERTEX> & FileMesh);
 	void Input();
 	void Render();
 	void ShutDown();
@@ -223,26 +223,39 @@ void DEMO_APP::LoadAssets()
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f
+		7.0f, 10.0f, 7.0f, 1.0f
 	};
 
+	sphere1world = XMMatrixIdentity();
+	sphere1local = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		10.0f, 10.0f, 10.0f, 1.0f
+	};
 
-	vector<VERTEX> mesh;
-	LoadOBJ("spheresizeone.obj", mesh);
-	spherevertcount = (unsigned int)mesh.size();
+	LoadOBJwhite("spheresizeone.obj", whitemesh);
+	LoadOBJred("spheresizeone.obj", redmesh);
+	spherevertcount = (unsigned int)whitemesh.size();
+
 
 	D3D11_BUFFER_DESC pointbufferdescription;
 	ZeroMemory(&pointbufferdescription, sizeof(D3D11_BUFFER_DESC));
-	pointbufferdescription.Usage = D3D11_USAGE_DEFAULT;
+	pointbufferdescription.Usage = D3D11_USAGE_DYNAMIC;
 	pointbufferdescription.ByteWidth = sizeof(VERTEX) * spherevertcount;
 	pointbufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	pointbufferdescription.CPUAccessFlags = 0;
+	pointbufferdescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	pointbufferdescription.MiscFlags = NULL;
 	pointbufferdescription.StructureByteStride = sizeof(VERTEX);
+
 	D3D11_SUBRESOURCE_DATA pointinitdata;
 	ZeroMemory(&pointinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	pointinitdata.pSysMem = mesh.data();
-	device->CreateBuffer(&pointbufferdescription, &pointinitdata, &spherevertbuffer);
+	pointinitdata.pSysMem = whitemesh.data();
+	device->CreateBuffer(&pointbufferdescription, &pointinitdata, &whitespherevertbuffer);
+
+	ZeroMemory(&pointinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
+	pointinitdata.pSysMem = redmesh.data();
+	device->CreateBuffer(&pointbufferdescription, &pointinitdata, &redspherevertbuffer);
 #pragma endregion
 
 #pragma region camera
@@ -268,7 +281,7 @@ void DEMO_APP::LoadAssets()
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f , 0.0f,
-		0.0f, 2.0f, 20.0f, 1.0f
+		0.0f, 0.0f, 50.0f, 1.0f
 	};
 	XMMATRIX yrotation = {
 		cosf(XM_PI),   0.0f, sinf(XM_PI), 0.0f,
@@ -297,33 +310,6 @@ void DEMO_APP::LoadAssets()
 	device->CreateBuffer(&cameraconstbufferdescription, &camerainitdata, &cameraconstbuffer);
 #pragma endregion
 
-#pragma region line
-	lineworld = clocal;
-	linelocal = {
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		0.2f, -0.1f, 0.2f, 1.0f
-	};
-	line = new VERTEX[linevertcount];
-	line[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-	line[0].color = XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f);
-	line[1].xyzw = XMFLOAT4(0.0f, 0.0f, 10.0f, 1.0f);
-	line[1].color = XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f);
-	D3D11_BUFFER_DESC linebufferdescription;
-	ZeroMemory(&linebufferdescription, sizeof(D3D11_BUFFER_DESC));
-	linebufferdescription.Usage = D3D11_USAGE_DYNAMIC;
-	linebufferdescription.ByteWidth = sizeof(VERTEX) * linevertcount;
-	linebufferdescription.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	linebufferdescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	linebufferdescription.MiscFlags = NULL;
-	linebufferdescription.StructureByteStride = sizeof(VERTEX);
-	D3D11_SUBRESOURCE_DATA lineinitdata;
-	ZeroMemory(&lineinitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	lineinitdata.pSysMem = line;
-	device->CreateBuffer(&linebufferdescription, &lineinitdata, &linevertbuffer);
-#pragma endregion
-
 #pragma region transform
 	TRANSFORM transform;
 	ZeroMemory(&transform, sizeof(TRANSFORM));
@@ -346,7 +332,7 @@ void DEMO_APP::LoadAssets()
 
 }
 
-void DEMO_APP::LoadOBJ(char * fileName, vector<VERTEX> & FileMesh)
+void DEMO_APP::LoadOBJwhite(char * fileName, vector<VERTEX> & FileMesh)
 {
 	vector<unsigned int> vertexindices, uvindices, normalindices;
 	vector<XMFLOAT4>vertices;
@@ -413,7 +399,83 @@ void DEMO_APP::LoadOBJ(char * fileName, vector<VERTEX> & FileMesh)
 		VERTEX vertex;
 		unsigned int vertexindex = vertexindices[i];
 		vertex.xyzw = vertices[vertexindex - 1];
-		vertex.color = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.1f);
+		vertex.color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		unsigned int uvindex = uvindices[i];
+		vertex.uv = uvs[uvindex - 1];
+		unsigned int normalindex = normalindices[i];
+		vertex.normal = normals[normalindex - 1];
+		FileMesh.push_back(vertex);
+	}
+}
+
+void DEMO_APP::LoadOBJred(char * fileName, vector<VERTEX> & FileMesh)
+{
+	vector<unsigned int> vertexindices, uvindices, normalindices;
+	vector<XMFLOAT4>vertices;
+	vector<XMFLOAT2>uvs;
+	vector<XMFLOAT4>normals;
+	FILE * file;
+	fopen_s(&file, fileName, "r");
+	if (file == nullptr)
+	{
+		OutputDebugString(L"File is nullptr");
+		return;
+	}
+	while (true)
+	{
+		char lineheader[128]{};
+		int res = fscanf(file, "%s", lineheader);
+		if (res == EOF)
+		{
+			break;
+		}
+		if (strcmp(lineheader, "v") == 0)
+		{
+			XMFLOAT4 vertex;
+			fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+			vertex.w = 1;
+			vertices.push_back(vertex);
+		}
+		else if (strcmp(lineheader, "vt") == 0)
+		{
+			XMFLOAT2 uv;
+			ZeroMemory(&uv, sizeof(XMFLOAT2));
+			fscanf(file, "%f %f\n", &uv.x, &uv.y);
+			uvs.push_back(uv);
+		}
+		else if (strcmp(lineheader, "vn") == 0)
+		{
+			XMFLOAT4 normal;
+			ZeroMemory(&normal, sizeof(XMFLOAT4));
+			fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+			normals.push_back(normal);
+		}
+		else if (strcmp(lineheader, "f") == 0)
+		{
+			unsigned int vertexindex[3], uvindex[3], normalindex[3];
+			int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexindex[0], &uvindex[0], &normalindex[0], &vertexindex[1], &uvindex[1], &normalindex[1], &vertexindex[2], &uvindex[2], &normalindex[2]);
+			if (matches != 9)
+			{
+				OutputDebugString(L"file corrupt or just can not be read");
+				return;
+			}
+			vertexindices.push_back(vertexindex[0]);
+			vertexindices.push_back(vertexindex[1]);
+			vertexindices.push_back(vertexindex[2]);
+			uvindices.push_back(uvindex[0]);
+			uvindices.push_back(uvindex[1]);
+			uvindices.push_back(uvindex[2]);
+			normalindices.push_back(normalindex[0]);
+			normalindices.push_back(normalindex[1]);
+			normalindices.push_back(normalindex[2]);
+		}
+	}
+	for (size_t i = 0; i < vertexindices.size(); i++)
+	{
+		VERTEX vertex;
+		unsigned int vertexindex = vertexindices[i];
+		vertex.xyzw = vertices[vertexindex - 1];
+		vertex.color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 		unsigned int uvindex = uvindices[i];
 		vertex.uv = uvs[uvindex - 1];
 		unsigned int normalindex = normalindices[i];
@@ -475,17 +537,17 @@ void DEMO_APP::Input()
 
 #pragma region translation testpoint movement
 	if (userinput.buttons['I'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((+(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['K'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((-(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['Y'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((+(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['H'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((-(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['J'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((-(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((-(float)time.Delta()) * 1.0f);
 	if (userinput.buttons['L'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((+(float)time.Delta()) * 10.0f);
+		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((+(float)time.Delta()) * 1.0f);
 #pragma endregion
 
 #pragma region rotation testpoint movement
@@ -510,7 +572,7 @@ void DEMO_APP::Input()
 		XMVECTOR pos = newtestpoint.r[3];
 		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 		newtestpoint.r[3] = XMLoadFloat4(&zero);
-		newtestpoint = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 10.0f) * newtestpoint * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 10.0f);
+		newtestpoint = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 1.0f) * newtestpoint * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 1.0f);
 		newtestpoint.r[3] = pos;
 	}
 #pragma endregion
@@ -560,22 +622,19 @@ void DEMO_APP::Render()
 
 #pragma region sphere
 	TRANSFORM tsphere;
+	TRANSFORM tspherecartesiancoordinates;
+
+
 	ZeroMemory(&tsphere, sizeof(TRANSFORM));
 	tsphere.tworld = XMMatrixTranspose(sphereworld);
 	tsphere.tlocal = XMMatrixTranspose(spherelocal);
-
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 	memcpy_s(msr.pData, sizeof(TRANSFORM), &tsphere, sizeof(TRANSFORM));
 	context->Unmap(transformconstbuffer, 0);
-
-
-	context->IASetVertexBuffers(0, 1, &spherevertbuffer, &stride, &offset);
+	context->IASetVertexBuffers(0, 1, &whitespherevertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->Draw(spherevertcount, 0);
-
-
-	TRANSFORM tspherecartesiancoordinates;
 	ZeroMemory(&tspherecartesiancoordinates, sizeof(TRANSFORM));
 	tspherecartesiancoordinates.tworld = XMMatrixTranspose(spherelocal);
 	tspherecartesiancoordinates.tlocal = XMMatrixTranspose(XMMatrixIdentity());
@@ -588,70 +647,41 @@ void DEMO_APP::Render()
 	context->Draw(cartesiancoordinatesvertcount, 0);
 
 
-#pragma endregion
-
-#pragma region line 
-
-	TRANSFORM tline;
-	ZeroMemory(&tline, sizeof(TRANSFORM));
-	tline.tworld = XMMatrixTranspose(clocal);
-	tline.tlocal = XMMatrixTranspose(linelocal);
+	ZeroMemory(&tsphere, sizeof(TRANSFORM));
+	tsphere.tworld = XMMatrixTranspose(sphere1world);
+	tsphere.tlocal = XMMatrixTranspose(sphere1local);
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &tline, sizeof(TRANSFORM));
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &tsphere, sizeof(TRANSFORM));
 	context->Unmap(transformconstbuffer, 0);
+	
+	XMVECTOR distance = XMVector4Dot(spherelocal.r[3] - sphere1local.r[3], spherelocal.r[3] - sphere1local.r[3]);
+	XMVECTOR radius = XMVector4Dot(XMVectorSet(-0.585f, -0.585f, -0.585f, 1.0f) - XMVectorSet(0.585f, 0.585f, 0.585f, 1.0f), XMVectorSet(-0.585f, -0.585f, -0.585f, 1.0f) - XMVectorSet(0.585f, 0.585f, 0.585f, 1.0f));
 
-	XMMATRIX matrixA = {
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		line[1].xyzw.x, line[1].xyzw.y, line[1].xyzw.z, 1.0f
-	};
-	matrixA *= clocal;
-	XMMATRIX matrixB = {
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		line[0].xyzw.x, line[0].xyzw.y, line[0].xyzw.z, 1.0f
-	};
-	matrixB *= clocal;
-	XMVECTOR A = matrixA.r[3];
-	XMVECTOR B = matrixB.r[3];
-	XMVECTOR C = B - A;
-	XMMATRIX testpointmatrix = spherelocal * sphereworld;
-	XMVECTOR D = XMVector4Dot((testpointmatrix.r[3] - A), C) / XMVector4Dot(C, C);
-	XMVECTOR closestpoint;
-	if (XMVector4Greater(D, C))
-		closestpoint = B;
-	else
-		closestpoint = A + (C * D);
-	XMVECTOR distance = XMVector4Dot(testpointmatrix.r[3] - closestpoint, testpointmatrix.r[3] - closestpoint);
-	if (collision == false && XMVector4Less(distance, XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f) * XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f)))
-	{
+	if (XMVector4LessOrEqual(distance, radius))
 		collision = true;
-		line[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		line[0].color = XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f);
-		line[1].xyzw = XMFLOAT4(0.0f, 0.0f, 10.0f, 1.0f);
-		line[1].color = XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f);
-		context->Map(linevertbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-		memcpy_s(msr.pData, sizeof(VERTEX) * linevertcount, line, sizeof(VERTEX) * linevertcount);
-		context->Unmap(linevertbuffer, 0);
-	}
-	else if (collision == true && XMVector4Greater(distance, XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f) * XMVectorSet(1.0f, 1.0f, 1.0f, 1.0f)))
-	{
+	else if (XMVector4GreaterOrEqual(distance, radius))
 		collision = false;
-		line[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		line[0].color = XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f);
-		line[1].xyzw = XMFLOAT4(0.0f, 0.0f, 10.0f, 1.0f);
-		line[1].color = XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f);
-		context->Map(linevertbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-		memcpy_s(msr.pData, sizeof(VERTEX) * linevertcount, line, sizeof(VERTEX) * linevertcount);
-		context->Unmap(linevertbuffer, 0);
-	}
+	
+	if (collision)
+		context->IASetVertexBuffers(0, 1, &redspherevertbuffer, &stride, &offset);
+	else
+		context->IASetVertexBuffers(0, 1, &whitespherevertbuffer, &stride, &offset);
 
-	context->IASetVertexBuffers(0, 1, &linevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(spherevertcount, 0);
+
+	ZeroMemory(&tspherecartesiancoordinates, sizeof(TRANSFORM));
+	tspherecartesiancoordinates.tworld = XMMatrixTranspose(sphere1local);
+	tspherecartesiancoordinates.tlocal = XMMatrixTranspose(XMMatrixIdentity());
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &tspherecartesiancoordinates, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &cartesiancoordinatesvertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-	context->Draw(linevertcount, 0);
+	context->Draw(cartesiancoordinatesvertcount, 0);
+
 #pragma endregion
 
 	swapchain->Present(0, 0);
@@ -673,13 +703,12 @@ void DEMO_APP::ShutDown()
 	pixelshader->Release();
 
 	cartesiancoordinatesvertbuffer->Release();
-	linevertbuffer->Release();
-	spherevertbuffer->Release();
+	whitespherevertbuffer->Release();
+	redspherevertbuffer->Release();
 
 	cameraconstbuffer->Release();
 	transformconstbuffer->Release();
 
-	delete line;
 	UnregisterClass(L"DirectXApplication", application);
 }
 
