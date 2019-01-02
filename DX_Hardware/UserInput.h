@@ -13,6 +13,7 @@ public:
 	float diffx = 0.0f;
 	float diffy = 0.0f;
 	bool mouse_move = false;
+	bool mouse_wheel = false;
 	bool left_click = false;
 	bool right_click = false;
 };
