@@ -15,6 +15,7 @@
 using namespace std;
 using namespace DirectX;
 using namespace DirectX::TriangleTests;//I might not need this later(it just had some collision alogithoms)
+
 #pragma comment(lib,"d3d11.lib")
 #pragma warning(disable : 4996)
 
@@ -41,7 +42,6 @@ public:
 	float Normal();
 	float NormalSquared();
 	VECTOR3D Normalize()const;
-private:
 
 };
 
@@ -195,6 +195,10 @@ class DEMO_APP
 	unsigned int                    groundmeshvertcount = 3;
 	VERTEX                         *groundmesh = nullptr;
 
+	ID3D11Buffer                   *movinggroundvertbuffer = nullptr;
+	unsigned int                    movinggroundmeshvertcount = 3;
+	VERTEX                         *movinggroundmesh = nullptr;
+
 	ID3D11Buffer                   *cartesiancoordinatesvertbuffer = nullptr;
 	unsigned int                    cartesiancoordinatesmeshvertcount = 6;
 	VERTEX                         *cartesiancoordinatesmesh = nullptr;
@@ -203,35 +207,39 @@ class DEMO_APP
 	unsigned int                    spheremeshvertcount = 0;
 	vector<VERTEX>                  spheremesh;
 
-	ID3D11Buffer                   *spherevelocitylinevertbuffer = nullptr;
-	unsigned int                    spherevelocitylinevertcount = 2;
-	VERTEX                         *spherevelocitylinemesh = nullptr;
-
 	ID3D11Buffer                   *pickinglinevertbuffer = nullptr;
 	unsigned int                    pickinglinemeshvertcount = 2;
 	VERTEX                         *pickinglinemesh = nullptr;
 
+	ID3D11Buffer                   *redcubevertbuffer = nullptr;
+	ID3D11Buffer                   *greencubevertbuffer = nullptr;
+	ID3D11Buffer                   *bluecubevertbuffer = nullptr;
+	unsigned int                    cubemeshvertcount = 0;
+	vector<VERTEX>                  redcubemesh;
+	vector<VERTEX>                  greencubemesh;
+	vector<VERTEX>                  bluecubemesh;
+
 	XMMATRIX                        cworld, clocal, cprojection;
-	XMMATRIX                        pickinglineworld, pickinglinelocal;
-	XMMATRIX                        startpickinglinelocal, endpickinglinelocal, collisionpickinglinelocal;
+	XMMATRIX                        pickinglineworld, startpickinglinelocal, endpickinglinelocal, collisionpickinglinelocal;
 	XMMATRIX                        groundworld, groundlocal;
+	XMMATRIX                        movinggroundworld, movinggroundlocal;
 	XMMATRIX                        sphereworld, spherelocal;
 
-	bool                            startpickinglinerender = false, endpickinglinerender = false, collisionpickinglinerender = false;
+	bool                            pickinglinerender = false, collisionpickinglinerender = false;
 
 #pragma region physics variables for ball bouncing
-	bool                            forceapplied = false;
-	float                           radius;
-	float                           mass;
-	float                           coefficientofrestitution;
+	//bool                            forceapplied = false;
+	//float                           radius;
+	//float                           mass;
+	//float                           coefficientofrestitution;
 
-	VECTOR3D                        linearvelocity;
-	VECTOR3D                        tangentialvelocity;
-	VECTOR3D                        normalvelocity;
-	VECTOR3D                        linearacceleration;
-	VECTOR3D                        gravity;
-	VECTOR3D                        weight;
-	VECTOR3D                        force;
+	//VECTOR3D                        linearvelocity;
+	//VECTOR3D                        tangentialvelocity;
+	//VECTOR3D                        normalvelocity;
+	//VECTOR3D                        linearacceleration;
+	//VECTOR3D                        gravity;
+	//VECTOR3D                        weight;
+	//VECTOR3D                        force;
 #pragma endregion
 
 	void LoadWindow(HINSTANCE &hinst, WNDPROC &proc);
@@ -240,6 +248,7 @@ class DEMO_APP
 	void LoadOBJ(char * fileName, vector<VERTEX> & FileMesh);
 	DEMO_APP::COLLISION_STATE CheckSpherePlaneCollision();
 	DEMO_APP::COLLISION_STATE RayIntersectsTriangle(XMVECTOR Origin, XMVECTOR Direction, XMVECTOR V0, XMVECTOR V1, XMVECTOR V2, float& Dist);
+	DEMO_APP::COLLISION_STATE RayIntersectsTriangles(XMVECTOR Origin, XMVECTOR Direction, vector<VERTEX> &mesh, float &Dist);
 public:
 	Time                            time;
 	HINSTANCE						application;
@@ -393,6 +402,36 @@ void DEMO_APP::LoadAssets()
 
 #pragma endregion
 
+#pragma region moving ground
+
+	movinggroundworld = XMMatrixIdentity();
+	movinggroundlocal = {
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+
+	movinggroundmesh = new VERTEX[movinggroundmeshvertcount];
+	movinggroundmesh[0].xyzw = XMFLOAT4(-10.0f, 0.0f, -10.0f, 1.0f);
+	movinggroundmesh[1].xyzw = XMFLOAT4(-10.0f, 0.0f, 10.0f, 1.0f);
+	movinggroundmesh[2].xyzw = XMFLOAT4(10.0f, 0.0f, -10.0f, 1.0f);
+
+	movinggroundmesh[0].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	movinggroundmesh[1].color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	movinggroundmesh[2].color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+
+	bd.Usage = D3D11_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof(VERTEX) * movinggroundmeshvertcount;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = 0;
+	bd.MiscFlags = NULL;
+	bd.StructureByteStride = sizeof(VERTEX);
+	id.pSysMem = movinggroundmesh;
+	device->CreateBuffer(&bd, &id, &movinggroundvertbuffer);
+
+#pragma endregion
+
 #pragma region cartesiancoordinates
 	cartesiancoordinatesmesh = new VERTEX[cartesiancoordinatesmeshvertcount];
 	cartesiancoordinatesmesh[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -418,6 +457,15 @@ void DEMO_APP::LoadAssets()
 	device->CreateBuffer(&bd, &id, &cartesiancoordinatesvertbuffer);
 #pragma endregion
 
+#pragma region sphere physics variables
+	/*radius = 1.0f;
+	mass = 10;
+	coefficientofrestitution = 0.7f;
+	linearacceleration = VECTOR3D(0.0f, 0.0f, 0.0f);
+	gravity = VECTOR3D(0.0f, -9.81f, 0.0f);
+	weight = gravity * mass;*/
+#pragma endregion
+
 #pragma region sphere
 	sphereworld = XMMatrixIdentity();
 	spherelocal = {
@@ -427,14 +475,7 @@ void DEMO_APP::LoadAssets()
 		1.1f, 5.1f, 1.1f, 1.0f
 	};
 
-	radius = 1.0f;
-	mass = 10;
-	coefficientofrestitution = 0.7f;
-	linearacceleration = VECTOR3D(0.0f, 0.0f, 0.0f);
-	gravity = VECTOR3D(0.0f, -9.81f, 0.0f);
-	weight = gravity * mass;
-
-	LoadOBJ("spheresizeone.obj", spheremesh);
+	LoadOBJ("sphere.obj", spheremesh);
 	spheremeshvertcount = (unsigned int)spheremesh.size();
 
 	bd.Usage = D3D11_USAGE_DEFAULT;
@@ -445,29 +486,10 @@ void DEMO_APP::LoadAssets()
 	bd.StructureByteStride = sizeof(VERTEX);
 	id.pSysMem = spheremesh.data();
 	device->CreateBuffer(&bd, &id, &spherevertbuffer);
-
-#pragma endregion
-
-#pragma region sphere velocity line
-	spherevelocitylinemesh = new VERTEX[spherevelocitylinevertcount];
-	spherevelocitylinemesh[0].xyzw = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-	spherevelocitylinemesh[0].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	spherevelocitylinemesh[1].xyzw = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	spherevelocitylinemesh[1].color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-
-	bd.Usage = D3D11_USAGE_DYNAMIC;
-	bd.ByteWidth = sizeof(VERTEX) * spherevelocitylinevertcount;
-	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	bd.MiscFlags = NULL;
-	bd.StructureByteStride = sizeof(VERTEX);
-	id.pSysMem = spherevelocitylinemesh;
-	device->CreateBuffer(&bd, &id, &spherevelocitylinevertbuffer);
 #pragma endregion
 
 #pragma region picking line
 	pickinglineworld = XMMatrixIdentity();
-	pickinglinelocal = XMMatrixIdentity();
 	startpickinglinelocal = XMMatrixIdentity();
 	endpickinglinelocal = XMMatrixIdentity();
 	collisionpickinglinelocal = XMMatrixIdentity();
@@ -486,6 +508,49 @@ void DEMO_APP::LoadAssets()
 	bd.StructureByteStride = sizeof(VERTEX);
 	id.pSysMem = pickinglinemesh;
 	device->CreateBuffer(&bd, &id, &pickinglinevertbuffer);
+#pragma endregion
+
+#pragma region rgb cubes
+
+	LoadOBJ("cube.obj", redcubemesh);
+	cubemeshvertcount = (unsigned int)redcubemesh.size();
+	redcubemesh.resize(cubemeshvertcount);
+	greencubemesh.resize(cubemeshvertcount);
+	bluecubemesh.resize(cubemeshvertcount);
+	for (size_t i = 0; i < cubemeshvertcount; i++)
+	{
+		redcubemesh[i].color = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+		greencubemesh[i] = redcubemesh[i];
+		greencubemesh[i].color = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+		bluecubemesh[i] = redcubemesh[i];
+		bluecubemesh[i].color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	}
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(VERTEX) * cubemeshvertcount;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bd.MiscFlags = NULL;
+	bd.StructureByteStride = sizeof(VERTEX);
+	id.pSysMem = redcubemesh.data();
+	device->CreateBuffer(&bd, &id, &redcubevertbuffer);
+
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(VERTEX) * cubemeshvertcount;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bd.MiscFlags = NULL;
+	bd.StructureByteStride = sizeof(VERTEX);
+	id.pSysMem = greencubemesh.data();
+	device->CreateBuffer(&bd, &id, &greencubevertbuffer);
+
+	bd.Usage = D3D11_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof(VERTEX) * cubemeshvertcount;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bd.MiscFlags = NULL;
+	bd.StructureByteStride = sizeof(VERTEX);
+	id.pSysMem = bluecubemesh.data();
+	device->CreateBuffer(&bd, &id, &bluecubevertbuffer);
 #pragma endregion
 
 #pragma region camera
@@ -646,22 +711,6 @@ void DEMO_APP::Input()
 		newcamera.r[3] = newcamera.r[3] + newcamera.r[0] * ((-(float)time.Delta()) * 10.0f);
 	if (userinput.buttons['D'])
 		newcamera.r[3] = newcamera.r[3] + newcamera.r[0] * ((+(float)time.Delta()) * 10.0f);
-	if (userinput.buttons['E'])
-	{
-		XMVECTOR pos = newcamera.r[3];
-		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		newcamera.r[3] = XMLoadFloat4(&zero);
-		newcamera = XMMatrixRotationZ(-(float)time.Delta() * 1.0f) * newcamera;
-		newcamera.r[3] = pos;
-	}
-	if (userinput.buttons['Q'])
-	{
-		XMVECTOR pos = newcamera.r[3];
-		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		newcamera.r[3] = XMLoadFloat4(&zero);
-		newcamera = XMMatrixRotationZ(+(float)time.Delta() * 1.0f) * newcamera;
-		newcamera.r[3] = pos;
-	}
 	if (userinput.left_click && userinput.mouse_move)
 	{
 		XMVECTOR pos = newcamera.r[3];
@@ -673,62 +722,48 @@ void DEMO_APP::Input()
 	clocal = newcamera;
 #pragma endregion
 
-#pragma region testpoint movement
-	XMMATRIX newtestpoint = spherelocal;
-	if (userinput.buttons['I'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((+(float)time.Delta()) * 10.0f);
-	if (userinput.buttons['K'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[2] * ((-(float)time.Delta()) * 10.0f);
-	if (userinput.buttons['Y'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((+(float)time.Delta()) * 10.0f);
-	if (userinput.buttons['H'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[1] * ((-(float)time.Delta()) * 10.0f);
+#pragma region ground movement
+	XMMATRIX newmatrix = movinggroundlocal;
 	if (userinput.buttons['J'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((-(float)time.Delta()) * 10.0f);
+		newmatrix.r[3] = newmatrix.r[3] + newmatrix.r[0] * ((-(float)time.Delta()) * 10.0f);
 	if (userinput.buttons['L'])
-		newtestpoint.r[3] = newtestpoint.r[3] + newtestpoint.r[0] * ((+(float)time.Delta()) * 10.0f);
-	if (userinput.buttons['O'])
-	{
-		XMVECTOR pos = newtestpoint.r[3];
-		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		newtestpoint.r[3] = XMLoadFloat4(&zero);
-		newtestpoint = XMMatrixRotationZ(-(float)time.Delta() * 1.0f) * newtestpoint;
-		newtestpoint.r[3] = pos;
-	}
-	if (userinput.buttons['U'])
-	{
-		XMVECTOR pos = newtestpoint.r[3];
-		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		newtestpoint.r[3] = XMLoadFloat4(&zero);
-		newtestpoint = XMMatrixRotationZ(+(float)time.Delta() * 1.0f) * newtestpoint;
-		newtestpoint.r[3] = pos;
-	}
+		newmatrix.r[3] = newmatrix.r[3] + newmatrix.r[0] * ((+(float)time.Delta()) * 10.0f);
+	if (userinput.buttons['Y'])
+		newmatrix.r[3] = newmatrix.r[3] + newmatrix.r[1] * ((+(float)time.Delta()) * 10.0f);
+	if (userinput.buttons['H'])
+		newmatrix.r[3] = newmatrix.r[3] + newmatrix.r[1] * ((-(float)time.Delta()) * 10.0f);
+	if (userinput.buttons['I'])
+		newmatrix.r[3] = newmatrix.r[3] + newmatrix.r[2] * ((+(float)time.Delta()) * 10.0f);
+	if (userinput.buttons['K'])
+		newmatrix.r[3] = newmatrix.r[3] + newmatrix.r[2] * ((-(float)time.Delta()) * 10.0f);
 	if (userinput.right_click && userinput.mouse_move)
 	{
-		XMVECTOR pos = newtestpoint.r[3];
+		XMVECTOR pos = newmatrix.r[3];
 		XMFLOAT4 zero = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-		newtestpoint.r[3] = XMLoadFloat4(&zero);
-		newtestpoint = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 10.0f) * newtestpoint * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 10.0f);
-		newtestpoint.r[3] = pos;
+		newmatrix.r[3] = XMLoadFloat4(&zero);
+		newmatrix = XMMatrixRotationX(userinput.diffy * (float)time.Delta() * 10.0f) * newmatrix * XMMatrixRotationY(userinput.diffx * (float)time.Delta() * 10.0f);
+		newmatrix.r[3] = pos;
 	}
-	spherelocal = newtestpoint;
+	movinggroundlocal = newmatrix;
 #pragma endregion
 
-#pragma region picking
+#pragma region ground picking
 
 	if (userinput.buttons['1'])
 	{
-		startpickinglinerender = endpickinglinerender = true;
-		//get line
+		//unproject screen click
+		pickinglinerender = true;
 		XMVECTOR start = XMVectorSet(userinput.x, userinput.y, ZFAR, 1.0f);
 		startpickinglinelocal.r[3] = XMVector3Unproject(start, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZNEAR, cprojection, XMMatrixInverse(0, clocal), cworld);
 		endpickinglinelocal.r[3] = XMVector3Unproject(start, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZFAR, cprojection, XMMatrixInverse(0, clocal), cworld);
 		pickinglinemesh[0].xyzw = XMFLOAT4(XMVectorGetX(startpickinglinelocal.r[3]), XMVectorGetY(startpickinglinelocal.r[3]), XMVectorGetZ(startpickinglinelocal.r[3]), 1.0f);
 		pickinglinemesh[1].xyzw = XMFLOAT4(XMVectorGetX(endpickinglinelocal.r[3]), XMVectorGetY(endpickinglinelocal.r[3]), XMVectorGetZ(endpickinglinelocal.r[3]), 1.0f);
 
-		//check line triangle intersection
 		float distance = 0.0f;
-		bool intersection = RayIntersectsTriangle(
+		bool intersection = false;
+
+		//test collision with stationary triangle
+		intersection = RayIntersectsTriangle(
 			startpickinglinelocal.r[3],
 			endpickinglinelocal.r[3] - startpickinglinelocal.r[3],
 			XMVectorSet(groundmesh[2].xyzw.x, groundmesh[2].xyzw.y, groundmesh[2].xyzw.z, 1.0f),
@@ -743,7 +778,45 @@ void DEMO_APP::Input()
 		}
 		else
 			collisionpickinglinerender = false;
+
+		//test collision with moving triangle
+		if (!intersection)
+		{
+			XMVECTOR newstart = startpickinglinelocal.r[3] - movinggroundlocal.r[3];
+			XMVECTOR newend = endpickinglinelocal.r[3] - movinggroundlocal.r[3];
+			intersection = RayIntersectsTriangle(
+				newstart,
+				newend - newstart,
+				XMVectorSet(movinggroundmesh[2].xyzw.x, movinggroundmesh[2].xyzw.y, movinggroundmesh[2].xyzw.z, 1.0f),
+				XMVectorSet(movinggroundmesh[1].xyzw.x, movinggroundmesh[1].xyzw.y, movinggroundmesh[1].xyzw.z, 1.0f),
+				XMVectorSet(movinggroundmesh[0].xyzw.x, movinggroundmesh[0].xyzw.y, movinggroundmesh[0].xyzw.z, 1.0f),
+				distance);
+
+			if (intersection)
+			{
+				collisionpickinglinelocal.r[3] = ((endpickinglinelocal.r[3] - startpickinglinelocal.r[3]) * distance) + startpickinglinelocal.r[3];
+				collisionpickinglinerender = true;
+			}
+			else
+				collisionpickinglinerender = false;
+
+		}
+
 	}
+
+
+	//if (userinput.buttons['2'] && userinput.mouse_move)
+	//{
+		//XMVECTOR mouseposition = XMVectorSet(userinput.x, userinput.y, ZFAR, 1.0f);
+		//XMVECTOR start = XMVector3Unproject(mouseposition, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZNEAR, cprojection, XMMatrixInverse(0, clocal), cworld);
+		//XMVECTOR end = XMVector3Unproject(mouseposition, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZFAR, cprojection, XMMatrixInverse(0, clocal), cworld);
+		//float distance = 0.0f;
+	//	COLLISION_STATE intersection = RayIntersectsTriangles(mouseposition, end - start, redcubemesh, distance);
+	//	if (intersection)
+	//	{
+	//		spherelocal.r[0] += XMVectorSet(abs(userinput.diffx) + abs(userinput.diffy), 0.0f, 0.0f, 1.0f) * time.Delta();
+	//	}
+	//}
 
 #pragma endregion
 
@@ -753,68 +826,50 @@ void DEMO_APP::Input()
 void DEMO_APP::Update()
 {
 
-#pragma region sphere physics
+#pragma region physics calculations
 
-	if (!forceapplied)
-	{
-		force = VECTOR3D(15.0f, 15.0f, 15.0f);
-		forceapplied = true;
-	}
-	else
-	{
-		force = 0.99f * force;
-		if (abs(force.x) < 0.09f) { force.x = 0; }
-		if (abs(force.y) < 0.09f) { force.y = 0; }
-		if (abs(force.z) < 0.09f) { force.z = 0; }
-		if (abs(linearacceleration.x) < 0.09f) { linearacceleration.x = 0; }
-		if (abs(linearacceleration.y) < 0.09f) { linearacceleration.y = 0; }
-		if (abs(linearacceleration.z) < 0.09f) { linearacceleration.z = 0; }
-	}
-	normalvelocity = (linearvelocity * VECTOR3D(XMVectorGetX(groundlocal.r[1]), XMVectorGetY(groundlocal.r[1]), XMVectorGetZ(groundlocal.r[1]))) * VECTOR3D(XMVectorGetX(groundlocal.r[1]), XMVectorGetY(groundlocal.r[1]), XMVectorGetZ(groundlocal.r[1]));
-	VECTOR3D pos = VECTOR3D(XMVectorGetX(spherelocal.r[3]), XMVectorGetY(spherelocal.r[3]), XMVectorGetZ(spherelocal.r[3]));
+	//if (!forceapplied)
+	//{
+	//	force = VECTOR3D(0.0f, 0.0f, 0.0f);
+	//	forceapplied = true;
+	//}
+	//else
+	//{
+	//	force = 0.99f * force;
+	//	if (abs(force.x) < 0.09f) { force.x = 0; }
+	//	if (abs(force.y) < 0.09f) { force.y = 0; }
+	//	if (abs(force.z) < 0.09f) { force.z = 0; }
+	//	if (abs(linearacceleration.x) < 0.09f) { linearacceleration.x = 0; }
+	//	if (abs(linearacceleration.y) < 0.09f) { linearacceleration.y = 0; }
+	//	if (abs(linearacceleration.z) < 0.09f) { linearacceleration.z = 0; }
+	//}
+	//normalvelocity = (linearvelocity * VECTOR3D(XMVectorGetX(groundlocal.r[1]), XMVectorGetY(groundlocal.r[1]), XMVectorGetZ(groundlocal.r[1]))) * VECTOR3D(XMVectorGetX(groundlocal.r[1]), XMVectorGetY(groundlocal.r[1]), XMVectorGetZ(groundlocal.r[1]));
+	//VECTOR3D pos = VECTOR3D(XMVectorGetX(spherelocal.r[3]), XMVectorGetY(spherelocal.r[3]), XMVectorGetZ(spherelocal.r[3]));
 
-	float distance = 0.0f;
-	COLLISION_STATE collisioncheck = RayIntersectsTriangle(spherelocal.r[3],
-		XMVectorSet(linearvelocity.x, linearvelocity.y, linearvelocity.z, 1.0f),
-		XMVectorSet(groundmesh[2].xyzw.x, groundmesh[2].xyzw.y, groundmesh[2].xyzw.z, 1.0f),
-		XMVectorSet(groundmesh[1].xyzw.x, groundmesh[1].xyzw.y, groundmesh[1].xyzw.z, 1.0f),
-		XMVectorSet(groundmesh[0].xyzw.x, groundmesh[0].xyzw.y, groundmesh[0].xyzw.z, 1.0f),
-		distance); 
+	//switch (CheckSpherePlaneCollision())
+	//{
+	//case NO_COLLISION:
+	//{
+	//	linearacceleration = (force + weight) / mass;
+	//	linearvelocity += linearacceleration * (float)time.Delta();
+	//	break;
+	//}
+	//case COLLISION:
+	//{
+	//	linearvelocity = -coefficientofrestitution * normalvelocity + (linearvelocity - normalvelocity);
+	//	break;
+	//}
+	//case RESTING_CONTACT:
+	//{
+	//	break;
+	//}
+	//}
+	//if (pos.y < radius)
+	//	pos.y = radius;
+	//pos += linearvelocity * (float)time.Delta();
 
+	//spherelocal.r[3] = XMVectorSet(pos.x, pos.y, pos.z, 1.0f);
 
-
-	switch (CheckSpherePlaneCollision())
-	//switch (collisioncheck)
-	{
-	case NO_COLLISION:
-	{
-		linearacceleration = (force + weight) / mass;
-		linearvelocity += linearacceleration * (float)time.Delta();
-		break;
-	}
-	case COLLISION:
-	{
-		linearvelocity = -coefficientofrestitution * normalvelocity + (linearvelocity - normalvelocity);
-
-		break;
-	}
-	case RESTING_CONTACT:
-	{
-		int i = 0;
-		break;
-	}
-	}
-		//if (pos.y < radius)
-		//pos.y = radius;
-	pos += linearvelocity * (float)time.Delta();
-
-	spherelocal.r[3] = XMVectorSet(pos.x, pos.y, pos.z, 1.0f);
-
-#pragma endregion
-
-#pragma region sphere linear acceleration
-	XMVECTOR velocity = XMVectorSet(linearvelocity.x, linearvelocity.y, linearvelocity.z, 1.0f);
-	XMStoreFloat4(&spherevelocitylinemesh[1].xyzw, velocity);
 #pragma endregion
 
 }
@@ -832,7 +887,8 @@ void DEMO_APP::Render()
 	ZeroMemory(&msr, sizeof(D3D11_MAPPED_SUBRESOURCE));
 	TRANSFORM t;
 	ZeroMemory(&t, sizeof(TRANSFORM));
-
+	XMMATRIX m;
+	ZeroMemory(&m, sizeof(XMMATRIX));
 
 #pragma region camera
 	CAMERA camera;
@@ -844,18 +900,6 @@ void DEMO_APP::Render()
 	memcpy_s(msr.pData, sizeof(CAMERA), &camera, sizeof(CAMERA));
 	context->Unmap(cameraconstbuffer, 0);
 	context->VSSetConstantBuffers(0, 1, &cameraconstbuffer);
-#pragma endregion
-
-#pragma region ground
-	t.tworld = XMMatrixTranspose(groundworld);
-	t.tlocal = XMMatrixTranspose(groundlocal);
-	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
-	context->Unmap(transformconstbuffer, 0);
-	context->IASetVertexBuffers(0, 1, &groundvertbuffer, &stride, &offset);
-	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	context->Draw(groundmeshvertcount, 0);
 #pragma endregion
 
 #pragma region cartesiancoordinates
@@ -870,7 +914,94 @@ void DEMO_APP::Render()
 	context->Draw(cartesiancoordinatesmeshvertcount, 0);
 #pragma endregion
 
+#pragma region ground
+	t.tworld = XMMatrixTranspose(groundworld);
+	t.tlocal = XMMatrixTranspose(groundlocal);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &groundvertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(groundmeshvertcount, 0);
+#pragma endregion
+
+#pragma region moving ground
+	t.tworld = XMMatrixTranspose(movinggroundworld);
+	t.tlocal = XMMatrixTranspose(movinggroundlocal);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &movinggroundvertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(movinggroundmeshvertcount, 0);
+
+	//cartesiancoordinates lines
+	t.tworld = XMMatrixTranspose(movinggroundlocal);
+	t.tlocal = XMMatrixTranspose(XMMatrixIdentity());
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &cartesiancoordinatesvertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	context->Draw(cartesiancoordinatesmeshvertcount, 0);
+
+	//cartesiancoordinates red cube
+	m = {
+		0.25f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.25f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.25f, 0.0f,
+		cartesiancoordinatesmesh[1].xyzw.x, cartesiancoordinatesmesh[1].xyzw.y, cartesiancoordinatesmesh[1].xyzw.z, 1.0f
+	};
+	t.tworld = XMMatrixTranspose(movinggroundlocal);
+	t.tlocal = XMMatrixTranspose(m);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &redcubevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(cubemeshvertcount, 0);
+
+	//cartesiancoordinates green cube
+	m = {
+		0.25f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.25f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.25f, 0.0f,
+		cartesiancoordinatesmesh[3].xyzw.x, cartesiancoordinatesmesh[3].xyzw.y, cartesiancoordinatesmesh[3].xyzw.z, 1.0f
+	};
+	t.tworld = XMMatrixTranspose(movinggroundlocal);
+	t.tlocal = XMMatrixTranspose(m);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &greencubevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(cubemeshvertcount, 0);
+
+	//cartesiancoordinates blue cube
+	m = {
+		0.25f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.25f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.25f, 0.0f,
+		cartesiancoordinatesmesh[5].xyzw.x, cartesiancoordinatesmesh[5].xyzw.y, cartesiancoordinatesmesh[5].xyzw.z, 1.0f
+	};
+	t.tworld = XMMatrixTranspose(movinggroundlocal);
+	t.tlocal = XMMatrixTranspose(m);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &bluecubevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(cubemeshvertcount, 0);
+#pragma endregion
+
 #pragma region sphere
+	//sphere
 	t.tworld = XMMatrixTranspose(sphereworld);
 	t.tlocal = XMMatrixTranspose(spherelocal);
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
@@ -880,7 +1011,8 @@ void DEMO_APP::Render()
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->Draw(spheremeshvertcount, 0);
-	//spheres cartesiancoordinates
+
+	//cartesiancoordinates lines
 	t.tworld = XMMatrixTranspose(spherelocal);
 	t.tlocal = XMMatrixTranspose(XMMatrixIdentity());
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
@@ -890,33 +1022,68 @@ void DEMO_APP::Render()
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	context->Draw(cartesiancoordinatesmeshvertcount, 0);
-#pragma endregion
 
-#pragma region sphere linear velocity
-	//spheres linear velocity
-	context->Map(spherevelocitylinevertbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(VERTEX) * spherevelocitylinevertcount, spherevelocitylinemesh, sizeof(VERTEX) * spherevelocitylinevertcount);
-	context->Unmap(spherevelocitylinevertbuffer, 0);
-
+	//cartesiancoordinates red cube
+	m = {
+		0.25f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.25f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.25f, 0.0f,
+		cartesiancoordinatesmesh[1].xyzw.x, cartesiancoordinatesmesh[1].xyzw.y, cartesiancoordinatesmesh[1].xyzw.z, 1.0f
+	};
 	t.tworld = XMMatrixTranspose(spherelocal);
-	t.tlocal = XMMatrixTranspose(XMMatrixIdentity());
+	t.tlocal = XMMatrixTranspose(m);
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
 	context->Unmap(transformconstbuffer, 0);
-	context->IASetVertexBuffers(0, 1, &spherevelocitylinevertbuffer, &stride, &offset);
+	context->IASetVertexBuffers(0, 1, &redcubevertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
-	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-	context->Draw(spherevelocitylinevertcount, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(cubemeshvertcount, 0);
+
+	//cartesiancoordinates green cube
+	m = {
+		0.25f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.25f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.25f, 0.0f,
+		cartesiancoordinatesmesh[3].xyzw.x, cartesiancoordinatesmesh[3].xyzw.y, cartesiancoordinatesmesh[3].xyzw.z, 1.0f
+	};
+	t.tworld = XMMatrixTranspose(spherelocal);
+	t.tlocal = XMMatrixTranspose(m);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &greencubevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(cubemeshvertcount, 0);
+
+	//cartesiancoordinates blue cube
+	m = {
+		0.25f, 0.0f, 0.0f, 0.0f,
+		0.0f, 0.25f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.25f, 0.0f,
+		cartesiancoordinatesmesh[5].xyzw.x, cartesiancoordinatesmesh[5].xyzw.y, cartesiancoordinatesmesh[5].xyzw.z, 1.0f
+	};
+	t.tworld = XMMatrixTranspose(spherelocal);
+	t.tlocal = XMMatrixTranspose(m);
+	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
+	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
+	context->Unmap(transformconstbuffer, 0);
+	context->IASetVertexBuffers(0, 1, &bluecubevertbuffer, &stride, &offset);
+	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->Draw(cubemeshvertcount, 0);
 #pragma endregion
 
-#pragma region picking line legment
+#pragma region picking line segment
 
 	//line
 	context->Map(pickinglinevertbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 	memcpy_s(msr.pData, sizeof(VERTEX) * pickinglinemeshvertcount, pickinglinemesh, sizeof(VERTEX) * pickinglinemeshvertcount);
 	context->Unmap(pickinglinevertbuffer, 0);
+
 	t.tworld = XMMatrixTranspose(pickinglineworld);
-	t.tlocal = XMMatrixTranspose(pickinglinelocal);
+	t.tlocal = XMMatrixTranspose(pickinglineworld);
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 	memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
 	context->Unmap(transformconstbuffer, 0);
@@ -926,9 +1093,9 @@ void DEMO_APP::Render()
 	context->Draw(pickinglinemeshvertcount, 0);
 
 	//start sphere
-	if (startpickinglinerender)
+	if (pickinglinerender)
 	{
-		t.tworld = XMMatrixTranspose(pickinglinelocal);
+		t.tworld = XMMatrixTranspose(pickinglineworld);
 		t.tlocal = XMMatrixTranspose(XMMatrixScaling(0.2f, 0.2f, 0.2f) * startpickinglinelocal);
 		context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 		memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
@@ -937,11 +1104,8 @@ void DEMO_APP::Render()
 		context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		context->Draw(spheremeshvertcount, 0);
-	}
-	//end sphere
-	if (endpickinglinerender)
-	{
-		t.tworld = XMMatrixTranspose(pickinglinelocal);
+		//end sphere
+		t.tworld = XMMatrixTranspose(pickinglineworld);
 		t.tlocal = XMMatrixTranspose(XMMatrixScaling(0.2f, 0.2f, 0.2f) * endpickinglinelocal);
 		context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 		memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
@@ -954,7 +1118,7 @@ void DEMO_APP::Render()
 	//collision sphere
 	if (collisionpickinglinerender)
 	{
-		t.tworld = XMMatrixTranspose(pickinglinelocal);
+		t.tworld = XMMatrixTranspose(pickinglineworld);
 		t.tlocal = XMMatrixTranspose(XMMatrixScaling(0.2f, 0.2f, 0.2f) * collisionpickinglinelocal);
 		context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
 		memcpy_s(msr.pData, sizeof(TRANSFORM), &t, sizeof(TRANSFORM));
@@ -991,13 +1155,17 @@ void DEMO_APP::ShutDown()
 	groundvertbuffer->Release();
 	delete groundmesh;
 
+	movinggroundvertbuffer->Release();
+	delete movinggroundmesh;
+
 	cartesiancoordinatesvertbuffer->Release();
 	delete cartesiancoordinatesmesh;
 
 	spherevertbuffer->Release();
 
-	spherevelocitylinevertbuffer->Release();
-	delete spherevelocitylinemesh;
+	redcubevertbuffer->Release();
+	greencubevertbuffer->Release();
+	bluecubevertbuffer->Release();
 
 	pickinglinevertbuffer->Release();
 	delete pickinglinemesh;
@@ -1007,26 +1175,24 @@ void DEMO_APP::ShutDown()
 
 DEMO_APP::COLLISION_STATE DEMO_APP::CheckSpherePlaneCollision()
 {
-	VECTOR3D centerpoint = VECTOR3D(XMVectorGetX(spherelocal.r[3]), XMVectorGetY(spherelocal.r[3]), XMVectorGetZ(spherelocal.r[3]));
-	VECTOR3D pointonplane = VECTOR3D(XMVectorGetX(groundlocal.r[3]), XMVectorGetY(groundlocal.r[3]), XMVectorGetZ(groundlocal.r[3]));
-	VECTOR3D planenormal = VECTOR3D(XMVectorGetX(groundlocal.r[1]), XMVectorGetY(groundlocal.r[1]), XMVectorGetZ(groundlocal.r[1]));
-
-
-	float vrn = linearvelocity * planenormal;
-	if (normalvelocity.Normal() <= 0.1f)
-	{
-		normalvelocity = VECTOR3D(0.0f, 0.0f, 0.0f);
-		vrn = 0.0f;
-	}
-
-	COLLISION_STATE collisionstate = NO_COLLISION;
-	if (vrn < 0.0f && abs(planenormal * (centerpoint - pointonplane)) <= radius)
-		collisionstate = COLLISION;
-	else if (vrn == 0.0f && abs(planenormal * (centerpoint - pointonplane)) == radius)
-		collisionstate = RESTING_CONTACT;
-	else if (vrn > 0.0f || abs(planenormal * (centerpoint - pointonplane)) > radius)
-		collisionstate = NO_COLLISION;
-	return collisionstate;
+	//VECTOR3D centerpoint = VECTOR3D(XMVectorGetX(spherelocal.r[3]), XMVectorGetY(spherelocal.r[3]), XMVectorGetZ(spherelocal.r[3]));
+	//VECTOR3D pointonplane = VECTOR3D(XMVectorGetX(groundlocal.r[3]), XMVectorGetY(groundlocal.r[3]), XMVectorGetZ(groundlocal.r[3]));
+	//VECTOR3D planenormal = VECTOR3D(XMVectorGetX(groundlocal.r[1]), XMVectorGetY(groundlocal.r[1]), XMVectorGetZ(groundlocal.r[1]));
+	//float vrn = linearvelocity * planenormal;
+	//if (normalvelocity.Normal() <= 0.1f)
+	//{
+	//	normalvelocity = VECTOR3D(0.0f, 0.0f, 0.0f);
+	//	vrn = 0.0f;
+	//}
+	//COLLISION_STATE collisionstate = NO_COLLISION;
+	//if (vrn < 0.0f && abs(planenormal * (centerpoint - pointonplane)) <= radius)
+	//	collisionstate = COLLISION;
+	//else if (vrn == 0.0f && abs(planenormal * (centerpoint - pointonplane)) == radius)
+	//	collisionstate = RESTING_CONTACT;
+	//else if (vrn > 0.0f || abs(planenormal * (centerpoint - pointonplane)) > radius)
+	//	collisionstate = NO_COLLISION;
+	//return collisionstate;
+	return NO_COLLISION;
 }
 
 DEMO_APP::COLLISION_STATE DEMO_APP::RayIntersectsTriangle(XMVECTOR Origin, XMVECTOR Direction, XMVECTOR V0, XMVECTOR V1, XMVECTOR V2, float& Dist)
@@ -1070,7 +1236,7 @@ DEMO_APP::COLLISION_STATE DEMO_APP::RayIntersectsTriangle(XMVECTOR Origin, XMVEC
 
 		if (XMVector4EqualInt(NoIntersection, XMVectorTrueInt()))
 		{
-			Dist = 0.f;
+			Dist = 0.0f;
 			//return false;
 			return NO_COLLISION;
 		}
@@ -1102,7 +1268,7 @@ DEMO_APP::COLLISION_STATE DEMO_APP::RayIntersectsTriangle(XMVECTOR Origin, XMVEC
 
 		if (XMVector4EqualInt(NoIntersection, XMVectorTrueInt()))
 		{
-			Dist = 0.f;
+			Dist = 0.0f;
 			//return false;
 			return NO_COLLISION;
 		}
@@ -1110,7 +1276,7 @@ DEMO_APP::COLLISION_STATE DEMO_APP::RayIntersectsTriangle(XMVECTOR Origin, XMVEC
 	else
 	{
 		// Parallel ray.
-		Dist = 0.f;
+		Dist = 0.0f;
 		//return false;
 		return NO_COLLISION;
 	}
@@ -1125,6 +1291,26 @@ DEMO_APP::COLLISION_STATE DEMO_APP::RayIntersectsTriangle(XMVECTOR Origin, XMVEC
 	//return true;
 	return COLLISION;
 
+}
+
+DEMO_APP::COLLISION_STATE DEMO_APP::RayIntersectsTriangles(XMVECTOR Origin, XMVECTOR Direction, vector<VERTEX> &mesh, float &Dist)
+{
+
+	float distance = (float)INT32_MAX;
+	COLLISION_STATE intersection = NO_COLLISION;
+	for (size_t index = 0; index < mesh.size() / 3; index += 3)
+	{
+		XMVECTOR V0 = XMVectorSet(mesh[index].xyzw.x, mesh[index].xyzw.y, mesh[index].xyzw.z, 1.0f);
+		XMVECTOR V1 = XMVectorSet(mesh[index + 1].xyzw.x, mesh[index + 1].xyzw.y, mesh[index + 1].xyzw.z, 1.0f);
+		XMVECTOR V2 = XMVectorSet(mesh[index + 1].xyzw.x, mesh[index + 1].xyzw.y, mesh[index + 1].xyzw.z, 1.0f);
+		float d = 0.0f;
+		if (RayIntersectsTriangle(Origin, Direction, V0, V1, V2, d) == COLLISION && distance > d)
+		{
+			intersection = COLLISION;
+			distance = d;
+		}
+	}
+	return intersection;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam);
