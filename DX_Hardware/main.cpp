@@ -753,19 +753,26 @@ void DEMO_APP::Input()
 	{
 		//unproject screen click
 		pickinglinerender = true;
-		XMVECTOR start = XMVectorSet(userinput.x, userinput.y, ZFAR, 1.0f);
-		startpickinglinelocal.r[3] = XMVector3Unproject(start, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZNEAR, cprojection, XMMatrixInverse(0, clocal), cworld);
-		endpickinglinelocal.r[3] = XMVector3Unproject(start, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZFAR, cprojection, XMMatrixInverse(0, clocal), cworld);
+		XMVECTOR screenclickposition = XMVectorSet(userinput.x, userinput.y, ZFAR, 1.0f);
+		startpickinglinelocal.r[3] = XMVector3Unproject(screenclickposition, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZNEAR, cprojection, XMMatrixInverse(0, clocal), cworld);
+		endpickinglinelocal.r[3] = XMVector3Unproject(screenclickposition, 0.0f, 0.0f, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT, 0.0f, ZFAR, cprojection, XMMatrixInverse(0, clocal), cworld);
 		pickinglinemesh[0].xyzw = XMFLOAT4(XMVectorGetX(startpickinglinelocal.r[3]), XMVectorGetY(startpickinglinelocal.r[3]), XMVectorGetZ(startpickinglinelocal.r[3]), 1.0f);
 		pickinglinemesh[1].xyzw = XMFLOAT4(XMVectorGetX(endpickinglinelocal.r[3]), XMVectorGetY(endpickinglinelocal.r[3]), XMVectorGetZ(endpickinglinelocal.r[3]), 1.0f);
 
 		float distance = 0.0f;
 		bool intersection = false;
 
-		//test collision with stationary triangle
+		////test collision with stationary triangle
+		XMMATRIX startpos = startpickinglinelocal - groundlocal;
+		XMMATRIX endpos = endpickinglinelocal - groundlocal;
+		XMMATRIX direction = endpos - startpos;
+		XMMATRIX rotation = XMMatrixTranspose(groundlocal);
+		rotation.r[3] = XMVectorZero();
+		startpos = XMMatrixMultiply(startpos, rotation);
+		direction = XMMatrixMultiply(direction, rotation);
 		intersection = RayIntersectsTriangle(
-			startpickinglinelocal.r[3],
-			endpickinglinelocal.r[3] - startpickinglinelocal.r[3],
+			startpos.r[3],
+			direction.r[3],
 			XMVectorSet(groundmesh[2].xyzw.x, groundmesh[2].xyzw.y, groundmesh[2].xyzw.z, 1.0f),
 			XMVectorSet(groundmesh[1].xyzw.x, groundmesh[1].xyzw.y, groundmesh[1].xyzw.z, 1.0f),
 			XMVectorSet(groundmesh[0].xyzw.x, groundmesh[0].xyzw.y, groundmesh[0].xyzw.z, 1.0f),
@@ -782,11 +789,16 @@ void DEMO_APP::Input()
 		//test collision with moving triangle
 		if (!intersection)
 		{
-			XMVECTOR newstart = startpickinglinelocal.r[3] - movinggroundlocal.r[3];
-			XMVECTOR newend = endpickinglinelocal.r[3] - movinggroundlocal.r[3];
+			startpos = startpickinglinelocal - movinggroundlocal;
+			endpos = endpickinglinelocal - movinggroundlocal;
+			direction = endpos - startpos;
+			rotation = XMMatrixTranspose(movinggroundlocal);
+			rotation.r[3] = XMVectorZero();
+			startpos = XMMatrixMultiply(startpos, rotation);
+			direction = XMMatrixMultiply(direction, rotation);
 			intersection = RayIntersectsTriangle(
-				newstart,
-				newend - newstart,
+				startpos.r[3],
+				direction.r[3],
 				XMVectorSet(movinggroundmesh[2].xyzw.x, movinggroundmesh[2].xyzw.y, movinggroundmesh[2].xyzw.z, 1.0f),
 				XMVectorSet(movinggroundmesh[1].xyzw.x, movinggroundmesh[1].xyzw.y, movinggroundmesh[1].xyzw.z, 1.0f),
 				XMVectorSet(movinggroundmesh[0].xyzw.x, movinggroundmesh[0].xyzw.y, movinggroundmesh[0].xyzw.z, 1.0f),
