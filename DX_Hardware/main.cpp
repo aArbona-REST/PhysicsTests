@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 #include "Time.h"
 #include "UserInput.h"
+#include "Thing.h"
 #include "VertexShader.csh"
 #include "PixelShader.csh"
 using namespace std;
@@ -27,7 +28,6 @@ class DEMO_APP
 {
 	struct VERTEX { XMFLOAT4 xyzw; XMFLOAT4 color; XMFLOAT2 uv; XMFLOAT4 normal; };
 	struct CAMERA { XMMATRIX cworld; XMMATRIX clocal; XMMATRIX cprojection; };
-	struct TRANSFORM { XMMATRIX tworld; XMMATRIX tlocal; };
 
 	HINSTANCE						application;
 	WNDPROC							appWndProc;
@@ -56,7 +56,7 @@ class DEMO_APP
 	ID3D11Buffer                   *transformconstbuffer = nullptr;
 
 	XMMATRIX cworld, clocal, cprojection;
-	XMMATRIX triangleworld, trianglelocal;
+	Thing* Triangle = nullptr;
 
 public:
 
@@ -227,16 +227,14 @@ void DEMO_APP::LoadAssets()
 #pragma endregion
 
 #pragma region triangle vert data and buffer
-
-	TRANSFORM triangle;
-	ZeroMemory(&triangle, sizeof(TRANSFORM));
-	triangleworld = XMMatrixIdentity();
-	trianglelocal = {
+	XMMATRIX transform = {
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, 1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.0f, 1.0f
 	};
+	Triangle = new Thing(transform, nullptr);
+
 	VERTEX trianglexyz[3]{};
 	trianglexyz[0].xyzw = XMFLOAT4(0.5f, -0.5f, 0.0f, 1.0f);
 	trianglexyz[0].color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
@@ -311,22 +309,18 @@ void DEMO_APP::LoadAssets()
 #pragma endregion
 
 #pragma region transform constbuffer
-	TRANSFORM transform;
-	ZeroMemory(&transform, sizeof(TRANSFORM));
-	transform.tworld = XMMatrixTranspose(XMMatrixIdentity());
-	transform.tlocal = XMMatrixTranspose(XMMatrixIdentity());
 
 	D3D11_BUFFER_DESC transformconstbufferdescription;
 	ZeroMemory(&transformconstbufferdescription, sizeof(D3D11_BUFFER_DESC));
 	transformconstbufferdescription.Usage = D3D11_USAGE_DYNAMIC;
-	transformconstbufferdescription.ByteWidth = sizeof(TRANSFORM);
+	transformconstbufferdescription.ByteWidth = sizeof(XMMATRIX);
 	transformconstbufferdescription.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	transformconstbufferdescription.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	transformconstbufferdescription.MiscFlags = NULL;
-	transformconstbufferdescription.StructureByteStride = sizeof(TRANSFORM);
+	transformconstbufferdescription.StructureByteStride = sizeof(XMMATRIX);
 	D3D11_SUBRESOURCE_DATA transforminitdata;
 	ZeroMemory(&transforminitdata, sizeof(D3D11_SUBRESOURCE_DATA));
-	transforminitdata.pSysMem = &camera;
+	transforminitdata.pSysMem = &XMMatrixIdentity();
 	device->CreateBuffer(&transformconstbufferdescription, &transforminitdata, &transformconstbuffer);
 #pragma endregion
 
@@ -457,8 +451,7 @@ void DEMO_APP::Input()
 
 	clocal = newcamera;
 
-
-	XMMATRIX newtriangle = trianglelocal;
+	XMMATRIX newtriangle = Triangle->GetTransform();
 
 #pragma region translation triangle movement
 	if (userinput.buttons['I'])
@@ -484,13 +477,7 @@ void DEMO_APP::Input()
 #pragma endregion
 
 	userinput.mouse_move = false;
-	trianglelocal = newtriangle;
-
-
-
-
-
-
+	Triangle->SetTransform(newtriangle);
 
 }
 
@@ -537,12 +524,8 @@ void DEMO_APP::Render()
 #pragma endregion
 
 #pragma region cartesiancoordinates
-	TRANSFORM tcartesiancoordinates;
-	ZeroMemory(&tcartesiancoordinates, sizeof(TRANSFORM));
-	tcartesiancoordinates.tworld = XMMatrixTranspose(XMMatrixIdentity());
-	tcartesiancoordinates.tlocal = XMMatrixTranspose(XMMatrixIdentity());
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &tcartesiancoordinates, sizeof(TRANSFORM));
+	memcpy_s(msr.pData, sizeof(XMMATRIX), &XMMatrixIdentity(), sizeof(XMMATRIX));
 	context->Unmap(transformconstbuffer, 0);
 
 	context->IASetVertexBuffers(0, 1, &cartesiancoordinatesvertbuffer, &stride, &offset);
@@ -552,12 +535,8 @@ void DEMO_APP::Render()
 #pragma endregion
 
 #pragma region triangle
-	TRANSFORM triangle;
-	ZeroMemory(&triangle, sizeof(TRANSFORM));
-	triangle.tworld = XMMatrixTranspose(triangleworld);
-	triangle.tlocal = XMMatrixTranspose(trianglelocal);
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &triangle, sizeof(TRANSFORM));
+	memcpy_s(msr.pData, sizeof(XMMATRIX), &XMMatrixTranspose(Triangle->GetTransform()), sizeof(XMMATRIX));
 	context->Unmap(transformconstbuffer, 0);
 
 	context->IASetVertexBuffers(0, 1, &trianglevertbuffer, &stride, &offset);
@@ -566,23 +545,15 @@ void DEMO_APP::Render()
 	context->Draw(3, 0);
 
 
-	TRANSFORM trianglecartesiancoordinates;
-	ZeroMemory(&trianglecartesiancoordinates, sizeof(TRANSFORM));
-	trianglecartesiancoordinates.tworld = XMMatrixTranspose(trianglelocal);
-	trianglecartesiancoordinates.tlocal = XMMatrixTranspose(XMMatrixIdentity());
 	context->Map(transformconstbuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr);
-	memcpy_s(msr.pData, sizeof(TRANSFORM), &trianglecartesiancoordinates, sizeof(TRANSFORM));
+	memcpy_s(msr.pData, sizeof(XMMATRIX), &XMMatrixTranspose(Triangle->GetTransform()), sizeof(XMMATRIX));
 	context->Unmap(transformconstbuffer, 0);
 
 	context->IASetVertexBuffers(0, 1, &cartesiancoordinatesvertbuffer, &stride, &offset);
 	context->VSSetConstantBuffers(1, 1, &transformconstbuffer);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	context->Draw(6, 0);
-
-
-
 #pragma endregion
-
 
 	swapchain->Present(0, 0);
 
@@ -590,6 +561,9 @@ void DEMO_APP::Render()
 
 void DEMO_APP::ShutDown()
 {
+
+	Triangle->~Thing();
+	delete Triangle;
 
 	//this is missing ID311Buffer->Release();
 	device->Release();

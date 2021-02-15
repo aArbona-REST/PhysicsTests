@@ -22,16 +22,17 @@ cbuffer CAMERA : register(b0)
 cbuffer TRANSFORM : register(b1)
 {
 	matrix tworld;
-	matrix tlocal;
+	//matrix tlocal;
 };
 
 OUTPUT_VERTEX main( INPUT_VERTEX fromVertexBuffer )
 {
 	OUTPUT_VERTEX sendToRasterizer = (OUTPUT_VERTEX)0;
 
-	matrix local = mul(tlocal, tworld);
+	//matrix local = mul(tlocal, tworld);
 
-	sendToRasterizer.projectedcoordinate = mul(fromVertexBuffer.coordinate, local);
+	//sendToRasterizer.projectedcoordinate = mul(fromVertexBuffer.coordinate, local);
+	sendToRasterizer.projectedcoordinate = mul(fromVertexBuffer.coordinate, tworld);
 	sendToRasterizer.projectedcoordinate = mul(sendToRasterizer.projectedcoordinate, clocal);
 	sendToRasterizer.projectedcoordinate = mul(sendToRasterizer.projectedcoordinate, cprojection);
 
